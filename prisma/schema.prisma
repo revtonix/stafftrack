@@ -1,0 +1,143 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEAM_LEAD_DAY
+  TEAM_LEAD_NIGHT
+  STAFF
+}
+
+enum Team {
+  DAY
+  NIGHT
+}
+
+enum LeaveType {
+  PAID
+  UNPAID
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  usernameLower String  @unique
+  passwordHash String
+  role         Role     @default(STAFF)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile      StaffProfile?
+  attendance   Attendance[]
+  workLogs     HourlyWorkLog[]
+  leaveRequests LeaveRequest[] @relation("StaffLeaves")
+  decidedLeaves LeaveRequest[] @relation("DecidedLeaves")
+  auditLogs    AuditLog[]
+
+  @@index([usernameLower])
+}
+
+model StaffProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photoUrl      String?
+  team          Team     @default(DAY)
+  monthlySalary Float    @default(10000)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Campaign {
+  id        String   @id @default(cuid())
+  name      String
+  team      Team
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workLogs  HourlyWorkLog[]
+
+  @@index([team])
+}
+
+model Attendance {
+  id        String   @id @default(cuid())
+  staffId   String
+  staff     User     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  checkIn   DateTime?
+  checkOut  DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffId, date])
+  @@index([staffId, date])
+}
+
+model HourlyWorkLog {
+  id          String   @id @default(cuid())
+  staffId     String
+  staff       User     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  date        DateTime @db.Date
+  hourIndex   Int      // 1-12
+  formsCount  Int      @default(0)
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([staffId, date, hourIndex])
+  @@index([staffId, date])
+  @@index([campaignId, date])
+}
+
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  staffId     String
+  staff       User        @relation("StaffLeaves", fields: [staffId], references: [id], onDelete: Cascade)
+  dateFrom    DateTime    @db.Date
+  dateTo      DateTime    @db.Date
+  type        LeaveType   @default(PAID)
+  reason      String
+  status      LeaveStatus @default(PENDING)
+  decidedById String?
+  decidedBy   User?       @relation("DecidedLeaves", fields: [decidedById], references: [id])
+  decidedAt   DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([staffId])
+  @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actor      User     @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  beforeJson Json?
+  afterJson  Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entityType])
+}
