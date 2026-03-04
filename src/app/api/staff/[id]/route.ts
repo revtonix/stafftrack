@@ -65,7 +65,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       entityType: 'User',
       entityId: params.id,
       beforeJson: { monthlySalary: before?.profile?.monthlySalary, team: before?.profile?.team },
-      afterJson: profileUpdates,
+      afterJson: JSON.stringify(profileUpdates),
     },
   })
 
