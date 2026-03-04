@@ -1,89 +1,79 @@
-// src/app/api/reports/payroll/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/auth'
-import { ok, unauthorized, forbidden } from '@/lib/api'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { calculateSalary } from '@/lib/salary'
+import { verifyAuth } from '@/lib/auth'
 
-function getDateRange(preset: string | null, from: string | null, to: string | null) {
+export async function GET(request: Request) {
+  const auth = await verifyAuth(request)
+  if (!auth || auth.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { searchParams } = new URL(request.url)
+  const period = searchParams.get('period') || 'today'
+
   const now = new Date()
-  if (preset === 'today') {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    return { start: d, end: new Date(d.getTime() + 86400000 - 1) }
-  }
-  if (preset === '7days') {
-    const s = new Date(now); s.setDate(s.getDate() - 6); s.setHours(0,0,0,0)
-    return { start: s, end: now }
-  }
-  if (preset === '30days') {
-    const s = new Date(now); s.setDate(s.getDate() - 29); s.setHours(0,0,0,0)
-    return { start: s, end: now }
-  }
-  if (preset === '6months') {
-    const s = new Date(now); s.setMonth(s.getMonth() - 6); s.setHours(0,0,0,0)
-    return { start: s, end: now }
-  }
-  if (preset === 'thisMonth' || (!preset && !from && !to)) {
-    const s = new Date(now.getFullYear(), now.getMonth(), 1)
-    const e = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-    return { start: s, end: e }
-  }
-  const start = from ? new Date(from) : new Date(now.getFullYear(), now.getMonth(), 1)
-  const end = to ? new Date(to + 'T23:59:59') : now
-  return { start, end }
-}
+  let startDate: Date, endDate: Date
 
-export async function GET(req: NextRequest) {
-  const session = await getSession()
-  if (!session) return unauthorized()
-  if (session.role !== 'ADMIN') return forbidden()
+  if (period === 'today') {
+    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000)
+  } else if (period === 'week') {
+    const day = now.getDay()
+    startDate = new Date(now)
+    startDate.setDate(now.getDate() - day)
+    startDate.setHours(0,0,0,0)
+    endDate = new Date(now)
+    endDate.setHours(23,59,59,999)
+  } else {
+    startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+  }
 
-  const { searchParams } = new URL(req.url)
-  const preset = searchParams.get('preset')
-  const from = searchParams.get('from')
-  const to = searchParams.get('to')
-  const exportCsv = searchParams.get('export') === 'csv'
-
-  const { start, end } = getDateRange(preset, from, to)
-
-  const staffList = await prisma.user.findMany({
-    where: { role: 'STAFF' },
-    include: { profile: true },
-    orderBy: { username: 'asc' },
+  const staff = await prisma.staffProfile.findMany({
+    include: {
+      user: true,
+      attendance: {
+        where: { date: { gte: startDate, lte: endDate } }
+      },
+      workLogs: {
+        where: { startTime: { gte: startDate, lte: endDate } }
+      }
+    }
   })
 
-  const results = []
-  for (const staff of staffList) {
-    if (!staff.profile) continue
-
-    // Count distinct attendance days
-    const attendanceDays = await prisma.attendance.count({
-      where: { staffId: staff.id, date: { gte: start, lte: end }, checkIn: { not: null } },
+  const report = staff.map((s) => {
+    const monthlySalary = s.monthlySalary
+    const dailyRate = monthlySalary / 26
+    const hourlyRate = dailyRate / 8
+    const presentDays = s.attendance.filter(a => a.status === 'PRESENT').length
+    const extraDays = Math.max(0, presentDays - 26)
+    const extraPay = extraDays * dailyRate
+    const presentDates = new Set(
+      s.attendance.filter(a => a.status === 'PRESENT').map(a => new Date(a.date).toDateString())
+    )
+    let partialHours = 0
+    s.workLogs.forEach(log => {
+      const logDate = new Date(log.startTime).toDateString()
+      if (!presentDates.has(logDate) && log.endTime) {
+        const hours = (new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / (1000 * 60 * 60)
+        partialHours += hours
+      }
     })
+    const partialPay = partialHours * hourlyRate
+    const totalSalary = monthlySalary + extraPay + partialPay
+    return {
+      name: s.user.username,
+      team: s.team,
+      presentDays,
+      extraDays,
+      partialHours: Math.round(partialHours * 10) / 10,
+      partialPay: Math.round(partialPay),
+      base: monthlySalary,
+      extraPay: Math.round(extraPay),
+      total: Math.round(totalSalary),
+      hourlyRate: Math.round(hourlyRate)
+    }
+  })
 
-    const salary = calculateSalary(staff.profile.monthlySalary, attendanceDays)
-
-    results.push({
-      id: staff.id,
-      name: staff.username,
-      team: staff.profile.team,
-      monthlySalary: staff.profile.monthlySalary,
-      ...salary,
-    })
-  }
-
-  if (exportCsv) {
-    const header = 'Staff,Team,Present Days,Extra Days,Base Salary,Extra Pay,Total Salary\n'
-    const rows = results.map(r =>
-      `${r.name},${r.team},${r.presentDays},${r.extraDays},${r.baseSalary},${r.extraPay},${r.totalSalary}`
-    ).join('\n')
-    return new NextResponse(header + rows, {
-      headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="payroll-${start.toISOString().split('T')[0]}.csv"`,
-      },
-    })
-  }
-
-  return ok(results)
+  return NextResponse.json({ report })
 }
