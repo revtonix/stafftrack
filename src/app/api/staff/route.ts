@@ -4,11 +4,11 @@
 
 import { NextResponse }          from 'next/server'
 import { prisma }                from '@/lib/prisma'
-import { verifyAuth }            from '@/lib/auth'
+import { getSessionFromRequest }            from '@/lib/auth'
 import { canViewSalary }         from '@/lib/salaryGuard'
 
 export async function GET(req: Request) {
-  const auth = await verifyAuth(req)
+  const auth = await getSessionFromRequest(req as any)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const staffList = await prisma.staffProfile.findMany({
