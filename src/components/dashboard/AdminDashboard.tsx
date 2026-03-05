@@ -76,14 +76,21 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
-      const [prRes, pdRes] = await Promise.all([
-        fetch(`/api/reports/payroll?preset=${preset}`),
-        fetch(`/api/reports/productivity?preset=${preset}`),
-      ])
-      const [pr, pd] = await Promise.all([prRes.json(), pdRes.json()])
-      if (pr.success) setPayroll(pr.data)
-      if (pd.success) setProductivity(pd.data)
-      setLoading(false)
+      try {
+        const [prRes, pdRes] = await Promise.all([
+          fetch(`/api/reports/payroll?preset=${preset}`),
+          fetch(`/api/reports/productivity?preset=${preset}`),
+        ])
+        const [prText, pdText] = await Promise.all([prRes.text(), pdRes.text()])
+        const pr = prText ? JSON.parse(prText) : {}
+        const pd = pdText ? JSON.parse(pdText) : {}
+        if (pr.success) setPayroll(pr.data)
+        if (pd.success) setProductivity(pd.data)
+      } catch (e) {
+        console.error('Failed to load dashboard data:', e)
+      } finally {
+        setLoading(false)
+      }
     }
     fetchData()
   }, [preset])
