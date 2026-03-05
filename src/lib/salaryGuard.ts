@@ -1,36 +1,23 @@
 // src/lib/salaryGuard.ts
-
-export type ViewerRole = 'ADMIN' | 'TEAM_LEAD' | 'STAFF'
+export type ViewerRole = 'ADMIN' | 'TEAM_LEAD' | 'TEAM_LEAD_DAY' | 'TEAM_LEAD_NIGHT' | 'STAFF'
 
 export interface CanViewSalaryArgs {
-  viewerRole:   ViewerRole
+  viewerRole:   ViewerRole | string
   viewerId:     string
   targetUserId: string
 }
 
-/**
- * ADMIN      → always true
- * STAFF      → true only if viewing own record
- * TEAM_LEAD  → never (not even own)
- */
-export function canViewSalary({
-  viewerRole,
-  viewerId,
-  targetUserId,
-}: CanViewSalaryArgs): boolean {
+export function canViewSalary({ viewerRole, viewerId, targetUserId }: CanViewSalaryArgs): boolean {
   if (viewerRole === 'ADMIN') return true
   if (viewerRole === 'STAFF') return viewerId === targetUserId
+  // TEAM_LEAD_DAY and TEAM_LEAD_NIGHT cannot see salary
   return false
 }
 
-/**
- * Strip salary fields from a record unless viewer is allowed.
- * Call on every record before returning from any API route.
- */
 export function stripSalary<
   T extends {
-    id?:           string
-    userId?:       string
+    id?:            string
+    userId?:        string
     monthlySalary?: number | null
     hourlyRate?:    number | null
     dailyRate?:     number | null
@@ -39,11 +26,9 @@ export function stripSalary<
     partialPay?:    number | null
     extraPay?:      number | null
   }
->(record: T, viewerRole: ViewerRole, viewerId: string): T {
+>(record: T, viewerRole: string, viewerId: string): T {
   const targetId = record.userId ?? record.id ?? ''
-  if (canViewSalary({ viewerRole, viewerId, targetUserId: targetId })) {
-    return record
-  }
+  if (canViewSalary({ viewerRole, viewerId, targetUserId: targetId })) return record
   return {
     ...record,
     monthlySalary: undefined,

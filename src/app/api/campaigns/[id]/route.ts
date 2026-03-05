@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma }       from '@/lib/prisma'
-import { verifyAuth }   from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 
 // PATCH /api/campaigns/[id]
 // Body: { name?, count? }
@@ -8,7 +8,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await verifyAuth(req)
+  const auth = await getSession()
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body: { name?: string; count?: number } = await req.json()
@@ -37,7 +37,7 @@ export async function DELETE(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await verifyAuth(req)
+  const auth = await getSession()
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   if (auth.role === 'STAFF') {

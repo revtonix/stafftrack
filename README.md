@@ -1,139 +1,109 @@
-# StaffTrack Pro
+# StaffTrack Pro — Complete Final Package
 
-Production-ready Staff Attendance + Campaign Productivity + Payroll Management System
+## 🚀 Setup Instructions (Developer)
 
-## Tech Stack
-
-- **Frontend**: Next.js 14 App Router + TypeScript + Tailwind CSS
-- **Backend**: Next.js API Route Handlers
-- **Database**: PostgreSQL + Prisma ORM
-- **Auth**: JWT (httpOnly cookies) + bcrypt
-- **Validation**: Zod
-
----
-
-## Quick Start
-
-### 1. Prerequisites
-
-- Node.js 18+
-- PostgreSQL database running locally or remote
-
-### 2. Setup
-
+### Step 1 — Install dependencies
 ```bash
-# Clone / extract the project
-cd stafftrack-pro
-
-# Install dependencies
 npm install
-
-# Copy env file
-cp .env.example .env
+# or
+bun install
 ```
 
-### 3. Configure .env
-
+### Step 2 — Create `.env` file
 ```env
-DATABASE_URL="postgresql://YOUR_USER:YOUR_PASSWORD@localhost:5432/stafftrack"
-JWT_SECRET="your-super-secret-jwt-key-min-32-characters-here"
+DATABASE_URL="postgresql://neondb_owner:YOUR_PASSWORD@YOUR_NEON_HOST/neondb?sslmode=require"
+JWT_SECRET="stafftrack-secret-healthnthrive-2024"
+NEXT_PUBLIC_APP_URL="https://your-domain.vercel.app"
 ```
 
-### 4. Database Setup
-
+### Step 3 — Run database migrations
 ```bash
-# Run migrations
 npx prisma migrate dev --name init
-
-# Seed default data (staff accounts, campaigns)
-npm run db:seed
+# or if already have DB:
+npx prisma migrate deploy
 ```
 
-### 5. Run
-
+### Step 4 — Seed database
 ```bash
-npm run dev
-# Open http://localhost:3000
+npm run db:seed
+# or
+bun run db:seed
 ```
+
+### Step 5 — Deploy
+```bash
+git add . && git commit -m "feat: complete stafftrack pro" && git push
+```
+Vercel auto-deploys on push.
 
 ---
 
-## Default Login Credentials
+## ✅ All Features Included
+
+| Feature | Status |
+|---|---|
+| **WOW Premium Dark UI** | ✅ Space dark bg + violet/cyan glows + grid lines |
+| **Premium Sidebar** | ✅ Glowing logo, gradient active, live cyan dot |
+| **Live Clock TopBar** | ✅ HH:MM:SS real-time, neon role badges |
+| **Shift-Day 7AM IST Logic** | ✅ All pages use 7AM IST as day cutoff |
+| **Attendance Approval Workflow** | ✅ Admin/TL can Approve, Adjust, Reject |
+| **Pending Approvals Dashboard** | ✅ Admin sees pending count + approval table with 30s polling |
+| **Live Salary Monitoring** | ✅ Admin sees live salary per staff, 10s auto-refresh |
+| **Salary Privacy + Re-Auth** | ✅ TL cannot see salaries, Admin must re-enter password |
+| **Staff Name/Salary Edit** | ✅ Right-side drawer slide-in edit UX |
+| **Multi-Campaign per Hour** | ✅ Admin/TL can add multiple campaigns in same hour |
+| **Reports: Productivity Default** | ✅ Opens on Productivity tab, Today period |
+| **Reports: Live Earnings** | ✅ Shows hourly earnings per staff, auto-refresh |
+| **Attendance Page Filters** | ✅ Today/Yesterday/Week/Month/Last Month/Custom |
+| **Role-Based Permissions** | ✅ Admin > TL (Day/Night) > Staff |
+
+---
+
+## 👥 Login Credentials (after seed)
 
 | Role | Username | Password |
-|------|----------|----------|
-| Admin | ADMIN | Admin@12345 |
-| Team Lead Day | TL_DAY | TLDay@123 |
-| Team Lead Night | TL_NIGHT | TLNight@123 |
-| All Staff | (any username) | Staff@123 |
-
-### Staff Usernames
-RITESH, SHASHANK, CHEEKU, VANSH, LALU, DEEPAK, ABHAY, SHIVA, PIYUSH, KARTIK, Alok Paul, ASHWANI, ADARSH, ADITYA, ABHILASH, AYUSH, ANSHU, Aman, Granth, New1
+|---|---|---|
+| Admin | `ADMIN` | `Admin@12345` |
+| Team Lead Day | `TL_DAY` | `TLDay@123` |
+| Team Lead Night | `TL_NIGHT` | `TLNight@123` |
+| Staff | `staff01` | `Staff@123` |
 
 ---
 
-## Features
+## 📁 New Files Added (vs base project)
 
-### Staff
-- ✅ Check In / Check Out with live clock
-- ✅ 12-hour productivity grid (campaign + forms per hour)
-- ✅ Monthly salary summary with breakdown
-- ✅ Attendance history
-- ✅ Apply leaves (Paid / Unpaid)
+```
+src/lib/shiftDay.ts              — 7AM IST shift-day helper
+src/lib/salaryGuard.ts           — Salary privacy guard functions
+src/lib/campaign-types.ts        — Campaign TypeScript types
+src/types/campaign.ts            — Campaign types (alias)
+src/components/dashboard/PendingApprovals.tsx
+src/components/dashboard/SalaryCell.tsx
+src/components/campaigns/HourGrid.tsx
+src/components/campaigns/HourRow.tsx
+src/components/campaigns/CampaignReportTable.tsx
+src/app/api/attendance/[id]/approve/route.ts
+src/app/api/attendance/[id]/reject/route.ts
+src/app/api/auth/re-auth/route.ts
+src/app/api/reports/campaigns/route.ts
+```
 
-### Team Leads
-- ✅ Rename campaigns for their team
-- ✅ View team productivity summary
+## 📋 Modified Files (vs base project)
 
-### Admin
-- ✅ Full staff management (create, edit, salary, team, reset password)
-- ✅ Payroll reports with CSV export
-- ✅ Productivity reports with CSV export
-- ✅ Report filters: Today, 7 days, 30 days, This Month, 6 Months, Custom Range
-- ✅ Leave approval / rejection
-- ✅ Campaign management
-
----
-
-## Role Access Control
-
-| Feature | Staff | Team Lead | Admin |
-|---------|-------|-----------|-------|
-| Check In/Out | ✅ | ✅ | ✅ |
-| Update Productivity | ✅ | — | — |
-| View Own Salary | ✅ | — | — |
-| Apply Leave | ✅ | — | — |
-| Rename Campaigns | — | ✅ (own team) | ✅ |
-| View Payroll Reports | — | — | ✅ |
-| Export CSV | — | — | ✅ |
-| Create Staff | — | — | ✅ |
-| Approve Leaves | — | — | ✅ |
-
----
-
-## Salary Calculation
-
-- Monthly salary for **26 working days**
-- Extra days pay: `(monthlySalary / 30) × extraDays`
-- Example: ₹10,000/month × 28 days = ₹10,000 + ₹666 = ₹10,666
-
----
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/auth/login | Login |
-| POST | /api/auth/logout | Logout |
-| GET | /api/auth/me | Current user |
-| GET/POST/PATCH | /api/attendance | Check in/out |
-| GET/POST | /api/worklogs | Hourly productivity |
-| GET/POST | /api/campaigns | Campaigns list |
-| PATCH/DELETE | /api/campaigns/[id] | Update campaign |
-| GET/POST | /api/leaves | Leave requests |
-| PATCH | /api/leaves/[id] | Approve/reject leave |
-| GET/POST | /api/staff | Staff list/create |
-| GET/PATCH | /api/staff/[id] | Staff detail/update |
-| GET | /api/reports/payroll | Payroll report + CSV |
-| GET | /api/reports/productivity | Productivity report + CSV |
-| GET | /api/reports/salary | Individual salary summary |
+```
+prisma/schema.prisma             — Added ApprovalStatus, HourEntry, CampaignWork
+src/app/globals.css              — Full WOW dark design system
+tailwind.config.js               — Syne + DM Mono fonts, violet brand
+src/app/layout.tsx               — Google Fonts import
+src/app/dashboard/layout.tsx     — Dark background
+src/components/layout/Sidebar.tsx — Premium WOW sidebar
+src/components/layout/TopBar.tsx  — Live clock + neon badges
+src/components/dashboard/AdminDashboard.tsx — Live salary + approvals
+src/app/dashboard/attendance/page.tsx — Full filters + approval
+src/app/dashboard/reports/page.tsx    — Productivity default + live
+src/app/dashboard/admin/page.tsx      — Drawer edit UX
+src/app/api/attendance/route.ts       — Approval status support
+src/app/api/campaigns/route.ts        — Campaign CRUD
+src/app/api/reports/payroll/route.ts  — Partial hours salary
+src/app/api/staff/route.ts            — Salary guard
+```

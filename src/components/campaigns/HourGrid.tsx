@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { HourRow } from '@/components/HourRow'
+import { HourRow } from '@/components/campaigns/HourRow'
 import { getShiftDayRange } from '@/lib/shiftDay'
 import type { HourEntry, UserRole } from '@/types/campaign'
 

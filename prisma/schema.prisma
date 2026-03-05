@@ -62,6 +62,7 @@ model User {
   // ── NEW: attendance approvals given by this user
   approvedAttendance Attendance[] @relation("AttendanceApprover")
   auditLogs     AuditLog[]
+  hourEntries   HourEntry[]
 
   @@index([usernameLower])
 }
@@ -167,4 +168,33 @@ model AuditLog {
 
   @@index([actorId])
   @@index([entityType])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CAMPAIGN TRACKING MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model HourEntry {
+  id        String         @id @default(cuid())
+  staffId   String
+  shiftKey  String
+  hourStart DateTime
+  hourEnd   DateTime
+  campaigns CampaignWork[]
+  staff     User           @relation(fields: [staffId], references: [id])
+  createdAt DateTime       @default(now())
+
+  @@index([staffId, shiftKey])
+}
+
+model CampaignWork {
+  id            String    @id @default(cuid())
+  hourEntryId   String
+  name          String
+  count         Int       @default(0)
+  createdByRole String
+  updatedAt     DateTime  @updatedAt
+  hourEntry     HourEntry @relation(fields: [hourEntryId], references: [id], onDelete: Cascade)
+
+  @@index([hourEntryId])
 }
