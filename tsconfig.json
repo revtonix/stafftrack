@@ -3,7 +3,11 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
+<<<<<<< HEAD
     "strict": true,
+=======
+    "strict": false,
+>>>>>>> main
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
