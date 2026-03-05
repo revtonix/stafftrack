@@ -1,44 +1,49 @@
-// src/app/api/campaigns/[id]/route.ts
-import { NextRequest } from 'next/server'
-import { getSession } from '@/lib/auth'
-import { ok, err, unauthorized, forbidden, UpdateCampaignSchema } from '@/lib/api'
-import { prisma } from '@/lib/prisma'
+import { NextResponse } from 'next/server'
+import { prisma }       from '@/lib/prisma'
+import { verifyAuth }   from '@/lib/auth'
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getSession()
-  if (!session) return unauthorized()
+// PATCH /api/campaigns/[id]
+// Body: { name?, count? }
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Only admin or team leads can rename
-  if (session.role === 'STAFF') return forbidden()
+  const body: { name?: string; count?: number } = await req.json()
 
-  const campaign = await prisma.campaign.findUnique({ where: { id: params.id } })
-  if (!campaign) return err('Campaign not found', 404)
+  // ROLE GUARD: only Admin or Team Lead can rename
+  if (body.name !== undefined && auth.role === 'STAFF') {
+    return NextResponse.json(
+      { error: 'Only Admin or Team Lead can rename campaigns' },
+      { status: 403 }
+    )
+  }
 
-  // Team lead can only rename their team's campaigns
-  if (session.role === 'TEAM_LEAD_DAY' && campaign.team !== 'DAY') return forbidden()
-  if (session.role === 'TEAM_LEAD_NIGHT' && campaign.team !== 'NIGHT') return forbidden()
-
-  const body = await req.json()
-  const parsed = UpdateCampaignSchema.safeParse(body)
-  if (!parsed.success) return err('Invalid input')
-
-  const updated = await prisma.campaign.update({
+  const updated = await prisma.campaignWork.update({
     where: { id: params.id },
-    data: { name: parsed.data.name },
+    data: {
+      ...(body.name  !== undefined ? { name:  body.name.trim() } : {}),
+      ...(body.count !== undefined ? { count: body.count }       : {}),
+    },
   })
 
-  return ok(updated)
+  return NextResponse.json({ campaign: updated })
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getSession()
-  if (!session) return unauthorized()
-  if (session.role !== 'ADMIN') return forbidden()
+// DELETE /api/campaigns/[id]  — Admin / Team Lead only
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await prisma.campaign.update({
-    where: { id: params.id },
-    data: { isActive: false },
-  })
+  if (auth.role === 'STAFF') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
-  return ok({ message: 'Campaign deactivated' })
+  await prisma.campaignWork.delete({ where: { id: params.id } })
+  return NextResponse.json({ ok: true })
 }

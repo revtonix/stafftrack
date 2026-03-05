@@ -1,77 +1,61 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { verifyAuth } from '@/lib/auth'
+// src/app/api/reports/payroll/route.ts
+// Replace only the return/mapping section in your existing GET handler.
+// Everything above (date range calculation, DB query) stays unchanged.
+
+import { NextResponse }          from 'next/server'
+import { prisma }                from '@/lib/prisma'
+import { verifyAuth }            from '@/lib/auth'
+import { canViewSalary }         from '@/lib/salaryGuard'
 
 export async function GET(request: Request) {
   const auth = await verifyAuth(request)
-  if (!auth || auth.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
-  const period = searchParams.get('period') || 'today'
+  const period = searchParams.get('period') ?? 'today'
+  const from   = searchParams.get('from')
+  const to     = searchParams.get('to')
 
-  const now = new Date()
-  let startDate: Date, endDate: Date
+  // ... your existing date range + DB query here (unchanged) ...
+  // const staffList = await prisma.staffProfile.findMany({ ... })
 
-  if (period === 'today') {
-    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000)
-  } else if (period === 'week') {
-    const day = now.getDay()
-    startDate = new Date(now)
-    startDate.setDate(now.getDate() - day)
-    startDate.setHours(0,0,0,0)
-    endDate = new Date(now)
-    endDate.setHours(23,59,59,999)
-  } else {
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-  }
+  // ── PRIVACY GUARD — replace your existing .map() with this ───────────────
+  const report = ([] as any[]).map(s => {   // ← swap [] for your staffList
+    const userId        = s.userId ?? s.id
+    const monthlySalary = s.monthlySalary ?? 0
+    const dailyRate     = Math.round(monthlySalary / 26)
+    const hourlyRate    = Math.round(dailyRate / 8)
 
-  const staff = await prisma.staffProfile.findMany({
-    include: {
-      user: true,
-      attendance: {
-        where: { date: { gte: startDate, lte: endDate } }
-      },
-      workLogs: {
-        where: { startTime: { gte: startDate, lte: endDate } }
-      }
-    }
-  })
+    // ... your existing calculations (presentDays, partialHours, etc.) ...
+    const presentDays  = 0   // ← replace with real computed value
+    const extraDays    = 0
+    const partialHours = 0
+    const partialPay   = 0
+    const extraPay     = 0
+    const base         = monthlySalary
+    const total        = base + extraPay + partialPay
 
-  const report = staff.map((s) => {
-    const monthlySalary = s.monthlySalary
-    const dailyRate = monthlySalary / 26
-    const hourlyRate = dailyRate / 8
-    const presentDays = s.attendance.filter(a => a.status === 'PRESENT').length
-    const extraDays = Math.max(0, presentDays - 26)
-    const extraPay = extraDays * dailyRate
-    const presentDates = new Set(
-      s.attendance.filter(a => a.status === 'PRESENT').map(a => new Date(a.date).toDateString())
-    )
-    let partialHours = 0
-    s.workLogs.forEach(log => {
-      const logDate = new Date(log.startTime).toDateString()
-      if (!presentDates.has(logDate) && log.endTime) {
-        const hours = (new Date(log.endTime).getTime() - new Date(log.startTime).getTime()) / (1000 * 60 * 60)
-        partialHours += hours
-      }
+    const allowed = canViewSalary({
+      viewerRole:   auth.role as any,
+      viewerId:     auth.userId,
+      targetUserId: userId,
     })
-    const partialPay = partialHours * hourlyRate
-    const totalSalary = monthlySalary + extraPay + partialPay
+
     return {
-      name: s.user.username,
-      team: s.team,
+      id:           userId,
+      name:         s.user?.username ?? s.name ?? '—',
+      team:         s.team,
       presentDays,
       extraDays,
       partialHours: Math.round(partialHours * 10) / 10,
-      partialPay: Math.round(partialPay),
-      base: monthlySalary,
-      extraPay: Math.round(extraPay),
-      total: Math.round(totalSalary),
-      hourlyRate: Math.round(hourlyRate)
+
+      // ── Salary fields: null when not allowed ──────────────────────────
+      partialPay:   allowed ? Math.round(partialPay) : null,
+      base:         allowed ? base                   : null,
+      extraPay:     allowed ? Math.round(extraPay)   : null,
+      total:        allowed ? Math.round(total)       : null,
+      hourlyRate:   allowed ? hourlyRate              : null,
+      salaryHidden: !allowed,  // frontend uses this flag to show ₹•••••
     }
   })
 

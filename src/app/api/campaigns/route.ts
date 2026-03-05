@@ -1,37 +1,71 @@
-// src/app/api/campaigns/route.ts
-import { NextRequest } from 'next/server'
-import { getSession } from '@/lib/auth'
-import { ok, err, unauthorized, forbidden, CampaignSchema } from '@/lib/api'
-import { prisma } from '@/lib/prisma'
+import { NextResponse } from 'next/server'
+import { prisma }       from '@/lib/prisma'
+import { verifyAuth }   from '@/lib/auth'
 
-export async function GET(req: NextRequest) {
-  const session = await getSession()
-  if (!session) return unauthorized()
+// POST /api/campaigns
+// Body: { staffId, shiftKey, hourStart, hourEnd, campaignName, count }
+export async function POST(req: Request) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { searchParams } = new URL(req.url)
-  const team = searchParams.get('team')
+  const { staffId, shiftKey, hourStart, hourEnd, campaignName, count = 0 } = await req.json()
 
-  const where: Record<string, unknown> = { isActive: true }
-  if (team) where.team = team
-
-  // Staff only see their team's campaigns
-  if (session.role === 'STAFF' && session.team) {
-    where.team = session.team
+  if (!staffId || !shiftKey || !hourStart || !campaignName) {
+    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const campaigns = await prisma.campaign.findMany({ where, orderBy: { name: 'asc' } })
-  return ok(campaigns)
+  // Get or create HourEntry for this staff + hour block
+  let hourEntry = await prisma.hourEntry.findFirst({
+    where: {
+      staffId,
+      shiftKey,
+      hourStart: new Date(hourStart),
+    },
+  })
+
+  if (!hourEntry) {
+    hourEntry = await prisma.hourEntry.create({
+      data: {
+        staffId,
+        shiftKey,
+        hourStart: new Date(hourStart),
+        hourEnd:   new Date(hourEnd),
+      },
+    })
+  }
+
+  // Add new campaign to this hour entry
+  const campaign = await prisma.campaignWork.create({
+    data: {
+      hourEntryId:   hourEntry.id,
+      name:          campaignName.trim(),
+      count,
+      createdByRole: auth.role,
+    },
+  })
+
+  return NextResponse.json({ campaign, hourEntryId: hourEntry.id })
 }
 
-export async function POST(req: NextRequest) {
-  const session = await getSession()
-  if (!session) return unauthorized()
-  if (session.role !== 'ADMIN') return forbidden()
+// GET /api/campaigns?staffId=X&shiftKey=2026-03-04
+export async function GET(req: Request) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
-  const parsed = CampaignSchema.safeParse(body)
-  if (!parsed.success) return err('Invalid input')
+  const { searchParams } = new URL(req.url)
+  const staffId  = searchParams.get('staffId')
+  const shiftKey = searchParams.get('shiftKey')
 
-  const campaign = await prisma.campaign.create({ data: parsed.data })
-  return ok(campaign, 201)
+  const entries = await prisma.hourEntry.findMany({
+    where: {
+      staffId:  staffId  ?? auth.userId,
+      shiftKey: shiftKey ?? undefined,
+    },
+    include: {
+      campaigns: { orderBy: { updatedAt: 'asc' } },
+    },
+    orderBy: { hourStart: 'asc' },
+  })
+
+  return NextResponse.json({ entries })
 }
