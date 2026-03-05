@@ -1,6 +1,8 @@
+'use client'
+
 // FILE 2: src/app/dashboard/page.tsx
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'use client'
+
 import { useEffect, useState, useCallback } from 'react'
 import { getShiftDayRange, shiftParams, toIST, type ShiftDayRange } from '@/lib/shiftDay'
 
