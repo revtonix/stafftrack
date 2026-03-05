@@ -77,9 +77,3 @@ export function shiftParams(now?: Date): URLSearchParams {
     period:   'today',
   })
 }
-
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// FILE 2: src/app/dashboard/page.tsx
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-'use client'
