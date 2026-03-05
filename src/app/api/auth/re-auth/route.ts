@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server'
 import { cookies }      from 'next/headers'
 import { prisma }       from '@/lib/prisma'
-import { verifyAuth }   from '@/lib/auth'
+import { verifyToken as verifyAuth }   from '@/lib/auth'
 import bcrypt           from 'bcryptjs'
 
 export async function POST(req: Request) {
