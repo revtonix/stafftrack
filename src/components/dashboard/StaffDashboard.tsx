@@ -31,34 +31,45 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const [campRes, attRes, logRes, salRes] = await Promise.all([
-      fetch('/api/campaigns'),
-      fetch(`/api/attendance?from=${todayStr}&to=${todayStr}`),
-      fetch(`/api/worklogs?date=${todayStr}`),
-      fetch('/api/reports/salary'),
-    ])
-    const [camp, att, logs, sal] = await Promise.all([campRes.json(), attRes.json(), logRes.json(), salRes.json()])
+    try {
+      const [campRes, attRes, logRes, salRes] = await Promise.all([
+        fetch('/api/campaigns'),
+        fetch(`/api/attendance?from=${todayStr}&to=${todayStr}`),
+        fetch(`/api/worklogs?date=${todayStr}`),
+        fetch('/api/reports/salary'),
+      ])
+      const [campText, attText, logsText, salText] = await Promise.all([
+        campRes.text(), attRes.text(), logRes.text(), salRes.text(),
+      ])
+      const camp = campText ? JSON.parse(campText) : {}
+      const att = attText ? JSON.parse(attText) : {}
+      const logs = logsText ? JSON.parse(logsText) : {}
+      const sal = salText ? JSON.parse(salText) : {}
 
-    if (camp.success) setCampaigns(camp.data)
-    if (att.success) setTodayAtt(att.data[0] || null)
-    if (sal.success) setSalary(sal.data)
+      if (camp.success) setCampaigns(camp.data)
+      if (att.success) setTodayAtt(att.data[0] || null)
+      if (sal.success) setSalary(sal.data)
 
-    if (logs.success) {
-      setWorkLogs(logs.data)
-      const init: typeof hourData = {}
-      for (let h = 1; h <= 12; h++) {
-        const existing = logs.data.find((l: WorkLog) => l.hourIndex === h)
-        init[h] = {
-          campaignId: existing?.campaignId || (camp.data[0]?.id || ''),
-          formsCount: existing?.formsCount?.toString() || '',
-          note: existing?.note || '',
-          saving: false,
-          saved: !!existing,
+      if (logs.success) {
+        setWorkLogs(logs.data)
+        const init: typeof hourData = {}
+        for (let h = 1; h <= 12; h++) {
+          const existing = logs.data.find((l: WorkLog) => l.hourIndex === h)
+          init[h] = {
+            campaignId: existing?.campaignId || (camp.data?.[0]?.id || ''),
+            formsCount: existing?.formsCount?.toString() || '',
+            note: existing?.note || '',
+            saving: false,
+            saved: !!existing,
+          }
         }
+        setHourData(init)
       }
-      setHourData(init)
+    } catch (e) {
+      console.error('StaffDashboard fetchAll error:', e)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [todayStr])
 
   useEffect(() => { fetchAll() }, [fetchAll])
@@ -153,7 +164,7 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
               disabled={checkedIn || checkLoading}
               className="btn-success btn-lg"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
               Check In
             </button>
             <button
@@ -161,7 +172,7 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
               disabled={!checkedIn || checkedOut || checkLoading}
               className="btn-danger btn-lg"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
               Check Out
             </button>
           </div>
@@ -277,9 +288,9 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
                       ) : isSaved ? (
-                        <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                       ) : (
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                       )}
                     </button>
                   </div>
