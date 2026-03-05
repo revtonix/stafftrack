@@ -1,13 +1,10 @@
 // prisma/schema.prisma
-<<<<<<< HEAD
-=======
 // ─────────────────────────────────────────────────────────────────────────────
 // CHANGES: 
 //   1. Add ApprovalStatus enum
 //   2. Add approval fields to Attendance model
 //   3. Everything else UNCHANGED
 // ─────────────────────────────────────────────────────────────────────────────
->>>>>>> main
 
 generator client {
   provider = "prisma-client-js"
@@ -41,23 +38,6 @@ enum LeaveStatus {
   REJECTED
 }
 
-<<<<<<< HEAD
-model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  usernameLower String  @unique
-  passwordHash String
-  role         Role     @default(STAFF)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  profile      StaffProfile?
-  attendance   Attendance[]
-  workLogs     HourlyWorkLog[]
-  leaveRequests LeaveRequest[] @relation("StaffLeaves")
-  decidedLeaves LeaveRequest[] @relation("DecidedLeaves")
-  auditLogs    AuditLog[]
-=======
 // ── NEW ───────────────────────────────────────────────────────────────────────
 enum ApprovalStatus {
   PENDING_APPROVAL
@@ -82,7 +62,6 @@ model User {
   // ── NEW: attendance approvals given by this user
   approvedAttendance Attendance[] @relation("AttendanceApprover")
   auditLogs     AuditLog[]
->>>>>>> main
 
   @@index([usernameLower])
 }
@@ -113,14 +92,6 @@ model Campaign {
 }
 
 model Attendance {
-<<<<<<< HEAD
-  id        String   @id @default(cuid())
-  staffId   String
-  staff     User     @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  date      DateTime @db.Date
-  checkIn   DateTime?
-  checkOut  DateTime?
-=======
   id        String    @id @default(cuid())
   staffId   String
   staff     User      @relation(fields: [staffId], references: [id], onDelete: Cascade)
@@ -136,18 +107,14 @@ model Attendance {
   approvedHours   Float?         // TL/Admin can override hours
   approvalNote    String?
 
->>>>>>> main
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([staffId, date])
   @@index([staffId, date])
-<<<<<<< HEAD
-=======
   // ── NEW indexes ───────────────────────────────────────────────────────────
   @@index([approvalStatus])
   @@index([approvedById])
->>>>>>> main
 }
 
 model HourlyWorkLog {
@@ -157,11 +124,7 @@ model HourlyWorkLog {
   campaignId  String
   campaign    Campaign @relation(fields: [campaignId], references: [id])
   date        DateTime @db.Date
-<<<<<<< HEAD
-  hourIndex   Int      // 1-12
-=======
   hourIndex   Int
->>>>>>> main
   formsCount  Int      @default(0)
   note        String?
   createdAt   DateTime @default(now())
