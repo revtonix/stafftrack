@@ -1,7 +1,7 @@
 // src/app/api/reports/salary/route.ts
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
-import { ok, err, unauthorized, forbidden } from '@/lib/api'
+import { ok, unauthorized, forbidden } from '@/lib/api'
 import { prisma } from '@/lib/prisma'
 import { calculateSalary } from '@/lib/salary'
 import { getShiftDate } from '@/lib/shiftDay'
@@ -50,6 +50,8 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get('to')
   const month = searchParams.get('month')
   const staffId = searchParams.get('staffId')
+  const exportType = searchParams.get('export') // csv, excel
+  const exportScope = searchParams.get('exportScope') // salary, hours, payroll
 
   const { start, end } = getDateRange(preset, from, to, month)
 
@@ -63,10 +65,8 @@ export async function GET(req: NextRequest) {
   if (isStaff) {
     targetIds = [session.userId]
   } else if (isTL) {
-    // TL can only see their team
     const teamFilter = session.role === 'TEAM_LEAD_DAY' ? 'DAY' : 'NIGHT'
     if (staffId) {
-      // Verify staff belongs to their team
       const staff = await prisma.user.findUnique({
         where: { id: staffId },
         include: { profile: true },
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Fetch attendance records with date-wise breakdown
+  // Fetch attendance records
   const attendance = await prisma.attendance.findMany({
     where: {
       staffId: { in: targetIds },
@@ -109,6 +109,32 @@ export async function GET(req: NextRequest) {
     },
     orderBy: [{ staffId: 'asc' }, { date: 'desc' }],
   })
+
+  // Fetch worklogs for forms/hour calculation
+  const workLogs = await prisma.hourlyWorkLog.findMany({
+    where: {
+      staffId: { in: targetIds },
+      date: { gte: start, lte: end },
+    },
+    select: { staffId: true, formsCount: true },
+  })
+
+  // Calculate total forms per staff
+  const formsPerStaff: Record<string, number> = {}
+  for (const wl of workLogs) {
+    formsPerStaff[wl.staffId] = (formsPerStaff[wl.staffId] || 0) + wl.formsCount
+  }
+
+  // Calculate working days in month for attendance indicator
+  const monthStart = new Date(start.getFullYear(), start.getMonth(), 1)
+  const monthEnd = new Date(start.getFullYear(), start.getMonth() + 1, 0)
+  let totalWorkingDays = 0
+  const today = getShiftDate()
+  const rangeEnd = monthEnd < today ? monthEnd : today
+  for (let d = new Date(monthStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+    totalWorkingDays++
+  }
+  if (totalWorkingDays === 0) totalWorkingDays = 1
 
   // Build date-wise records
   const records = attendance.map(a => {
@@ -132,13 +158,15 @@ export async function GET(req: NextRequest) {
       checkIn: a.checkIn,
       checkOut: a.checkOut,
       hoursWorked: Math.min(hoursWorked, 24),
-      // Only include salary data for STAFF (own) and ADMIN
       ...(isTL ? {} : { dailyEarning }),
     }
   })
 
-  // Build per-staff summaries
-  const staffMap: Record<string, { name: string; team: string; monthlySalary: number; presentDays: number; totalHours: number }> = {}
+  // Build per-staff summaries with enhanced fields
+  const staffMap: Record<string, {
+    name: string; team: string; monthlySalary: number
+    presentDays: number; totalHours: number
+  }> = {}
   for (const a of attendance) {
     if (!staffMap[a.staffId]) {
       staffMap[a.staffId] = {
@@ -157,21 +185,66 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Days remaining in month for AI forecast
+  const daysInMonth = monthEnd.getDate()
+  const daysPassed = Math.min(today.getDate(), daysInMonth)
+  const daysRemaining = Math.max(daysInMonth - daysPassed, 0)
+
   const staffSummaries = Object.entries(staffMap).map(([id, s]) => {
     const salary = calculateSalary(s.monthlySalary, s.presentDays)
+    const totalForms = formsPerStaff[id] || 0
+    const formsPerHour = s.totalHours > 0 ? Math.round((totalForms / s.totalHours) * 10) / 10 : 0
+
+    // Salary till date (daily rate * present days)
+    const salaryTillDate = Math.round((s.monthlySalary / 30) * s.presentDays)
+
+    // AI estimated month salary: project current rate to full month
+    const avgDailyAttendance = daysPassed > 0 ? s.presentDays / daysPassed : 0
+    const projectedDays = s.presentDays + Math.round(avgDailyAttendance * daysRemaining)
+    const estimatedSalary = calculateSalary(s.monthlySalary, projectedDays)
+
+    // Attendance status
+    const attendanceRatio = s.presentDays / totalWorkingDays
+    const attendanceStatus: 'green' | 'yellow' | 'red' =
+      attendanceRatio >= 0.9 ? 'green' : attendanceRatio >= 0.7 ? 'yellow' : 'red'
+
     return {
       staffId: id,
       name: s.name,
       team: s.team,
       presentDays: s.presentDays,
       totalHours: Math.round(s.totalHours * 100) / 100,
-      // Only include salary for STAFF and ADMIN
+      totalForms,
+      formsPerHour,
+      attendanceStatus,
+      totalWorkingDays,
       ...(isTL ? {} : {
         monthlySalary: s.monthlySalary,
+        salaryTillDate,
+        estimatedMonthSalary: estimatedSalary.totalSalary,
         ...salary,
       }),
     }
   })
+
+  // Sort by total salary (or hours for TL)
+  staffSummaries.sort((a, b) => {
+    if (isTL) return b.totalHours - a.totalHours
+    return (b.totalSalary || 0) - (a.totalSalary || 0)
+  })
+
+  // Top earners and hours rankings
+  const topEarners = isTL ? [] : [...staffSummaries]
+    .filter(s => (s.totalSalary || 0) > 0)
+    .sort((a, b) => (b.totalSalary || 0) - (a.totalSalary || 0))
+    .slice(0, 5)
+    .map(s => ({ name: s.name, amount: s.totalSalary || 0 }))
+
+  const topHours = [...staffSummaries]
+    .filter(s => s.totalHours > 0)
+    .sort((a, b) => b.totalHours - a.totalHours)
+    .slice(0, 5)
+    .map(s => ({ name: s.name, hours: s.totalHours }))
 
   // For single staff (self), also get leaves
   let leaves: any[] = []
@@ -181,11 +254,44 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  // Handle CSV export
+  if (exportType === 'csv') {
+    const scope = exportScope || 'salary'
+    let csvContent = ''
+
+    if (scope === 'hours') {
+      csvContent = 'Staff,Team,Present Days,Total Hours,Forms/Hour\n'
+      csvContent += staffSummaries.map(s =>
+        `${s.name},${s.team},${s.presentDays},${s.totalHours},${s.formsPerHour}`
+      ).join('\n')
+    } else if (scope === 'payroll') {
+      csvContent = 'Staff,Team,Present Days,Total Hours,Base Salary,Extra Days,Extra Pay,Total Salary,Salary Till Date,Estimated Month\n'
+      csvContent += staffSummaries.map(s =>
+        `${s.name},${s.team},${s.presentDays},${s.totalHours},${s.baseSalary || 0},${s.extraDays || 0},${s.extraPay || 0},${s.totalSalary || 0},${s.salaryTillDate || 0},${s.estimatedMonthSalary || 0}`
+      ).join('\n')
+    } else {
+      csvContent = 'Date,Staff,Team,Check-In,Check-Out,Hours Worked,Daily Earning\n'
+      csvContent += records.map(r =>
+        `${new Date(r.date).toISOString().split('T')[0]},${r.staffName},${r.team},${r.checkIn || ''},${r.checkOut || ''},${r.hoursWorked},${r.dailyEarning || ''}`
+      ).join('\n')
+    }
+
+    return new NextResponse(csvContent, {
+      headers: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="${scope}-report-${start.toISOString().split('T')[0]}.csv"`,
+      },
+    })
+  }
+
   return ok({
     records,
     staffSummaries,
     leaves,
     role: session.role,
     dateRange: { start, end },
+    topEarners,
+    topHours,
+    totalWorkingDays,
   })
 }
