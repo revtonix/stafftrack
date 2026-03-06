@@ -3,6 +3,8 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { getShiftDayRange, shiftParams, toIST, type ShiftDayRange } from '@/lib/shiftDay'
+import { SalaryPrivacyProvider } from '@/components/ui/SalaryPrivacyProvider'
+import { ProtectedSalary, SalaryRevealBar, SalaryUnlockButton } from '@/components/ui/ProtectedSalary'
 
 interface AttRow {
   id: string; staffName: string; team: 'DAY'|'NIGHT'
@@ -69,7 +71,12 @@ function Hero({ stats, range, checkedIn, onIn, onOut }: {
         {stats.checkInTime  && <Stat label="Checked In"  val={stats.checkInTime}  />}
         {stats.checkOutTime && <Stat label="Checked Out" val={stats.checkOutTime} />}
         {stats.hoursWorked > 0 && <Stat label="Hours Today"   val={`${stats.hoursWorked}h`} />}
-        {stats.earningsToday > 0 && <Stat label="Earned Today" val={inr(stats.earningsToday)} highlight />}
+        {stats.earningsToday > 0 && (
+          <div>
+            <p className="text-[10px] text-white/20 uppercase tracking-widest">Earned Today</p>
+            <ProtectedSalary value={stats.earningsToday} size="sm" className="font-bold font-mono text-emerald-400" />
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
@@ -183,6 +190,22 @@ function AttTable({ rows, loading, range }: { rows: AttRow[]; loading: boolean; 
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
+  const [role, setRole] = useState<string>('')
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(d => {
+      if (d.success) setRole(d.data.role)
+    }).catch(() => {})
+  }, [])
+
+  return (
+    <SalaryPrivacyProvider bypass={role === 'ADMIN'}>
+      <DashboardPageInner role={role} />
+    </SalaryPrivacyProvider>
+  )
+}
+
+function DashboardPageInner({ role }: { role: string }) {
   const clock = useClock()
   const [loading,    setLoading]    = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -264,11 +287,12 @@ export default function DashboardPage() {
   const presentN  = rows.filter(r => ['PRESENT','OVERTIME'].includes(r.status)).length
   const totalHrs  = rows.reduce((s,r) => s+r.hoursWorked, 0)
 
-  const cards = [
-    { label:'Present Today', value:`${presentN}`,                              helper:'staff checked in', accent:'#6366f1' },
-    { label:'Hours Today',   value:`${Math.round(totalHrs*10)/10}h`,           helper:'all staff combined', accent:'#8b5cf6' },
-    { label:'Daily Rate',    value:inr(Math.round(MONTHLY/26)),                helper:'per shift day', accent:'#f59e0b' },
-    { label:'My Earnings',   value:inr(stats.earningsToday),                   helper:'this shift day', accent:'#10b981' },
+  const dailyRateVal = Math.round(MONTHLY/26)
+  const cards: { label:string; value?:string; salaryValue?:number; helper:string; accent:string }[] = [
+    { label:'Present Today', value:`${presentN}`,                    helper:'staff checked in', accent:'#6366f1' },
+    { label:'Hours Today',   value:`${Math.round(totalHrs*10)/10}h`, helper:'all staff combined', accent:'#8b5cf6' },
+    { label:'Daily Rate',    salaryValue:dailyRateVal,               helper:'per shift day', accent:'#f59e0b' },
+    { label:'My Earnings',   salaryValue:stats.earningsToday,        helper:'this shift day', accent:'#10b981' },
   ]
 
   return (
@@ -324,7 +348,12 @@ export default function DashboardPage() {
                   <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-white/30">{c.label}</span>
                   <div className="w-1.5 h-1.5 rounded-full opacity-40" style={{ background:c.accent }} />
                 </div>
-                <div className="text-2xl font-black text-white tracking-tight tabular-nums leading-none">{c.value}</div>
+                <div className="text-2xl font-black text-white tracking-tight tabular-nums leading-none">
+                  {c.salaryValue !== undefined
+                    ? <ProtectedSalary value={c.salaryValue} size="lg" className="font-black text-white" />
+                    : c.value
+                  }
+                </div>
                 <div className="text-xs text-white/25">{c.helper}</div>
               </div>
             ))}
@@ -337,6 +366,7 @@ export default function DashboardPage() {
           Shift Day: {range.labelDate} · 07:00 IST boundary · Auto-sync 60s
         </p>
       </main>
+      <SalaryRevealBar />
     </div>
   )
 }
