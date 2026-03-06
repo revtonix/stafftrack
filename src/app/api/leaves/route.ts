@@ -37,19 +37,23 @@ export async function POST(req: NextRequest) {
   if (!session) return unauthorized()
   if (session.role !== 'STAFF') return forbidden()
 
-  const body = await req.json()
-  const parsed = LeaveSchema.safeParse(body)
-  if (!parsed.success) return err(parsed.error.errors[0]?.message || 'Invalid input')
+  try {
+    const body = await req.json()
+    const parsed = LeaveSchema.safeParse(body)
+    if (!parsed.success) return err(parsed.error.errors[0]?.message || 'Invalid input')
 
-  const leave = await prisma.leaveRequest.create({
-    data: {
-      staffId: session.userId,
-      dateFrom: new Date(parsed.data.dateFrom),
-      dateTo: new Date(parsed.data.dateTo),
-      type: parsed.data.type,
-      reason: parsed.data.reason,
-    },
-  })
+    const leave = await prisma.leaveRequest.create({
+      data: {
+        staffId: session.userId,
+        dateFrom: new Date(parsed.data.dateFrom),
+        dateTo: new Date(parsed.data.dateTo),
+        type: parsed.data.type,
+        reason: parsed.data.reason,
+      },
+    })
 
-  return ok(leave, 201)
+    return ok(leave, 201)
+  } catch {
+    return err('Failed to process leave request', 500)
+  }
 }

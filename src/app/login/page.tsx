@@ -36,11 +36,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-      {/* Background effects */}
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4 glow-bg grid-pattern">
+      {/* Extra glow for login */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/3 w-64 h-64 bg-brand-600/10 rounded-full blur-3xl" />
       </div>
 
       <div className="w-full max-w-md relative z-10">
@@ -68,7 +67,7 @@ export default function LoginPage() {
         </div>
 
         {/* Card */}
-        <div className="card p-8 shadow-2xl shadow-black/50">
+        <div className="card-glow p-8">
           <h2 className="text-lg font-semibold mb-6">
             Sign in to your account
           </h2>

@@ -2,8 +2,6 @@
 // src/components/dashboard/StaffDashboard.tsx
 import { useState, useEffect, useCallback } from 'react'
 import { formatTime, formatCurrency } from '@/lib/salary'
-import { SalaryPrivacyProvider } from '@/components/ui/SalaryPrivacyProvider'
-import { ProtectedSalary, SalaryRevealBar, SalaryUnlockButton } from '@/components/ui/ProtectedSalary'
 import type { JWTPayload } from '@/lib/auth'
 
 interface Campaign { id: string; name: string; team: string }
@@ -12,14 +10,6 @@ interface WorkLog { id: string; hourIndex: number; campaignId: string; formsCoun
 interface SalarySummary { baseSalary: number; extraDays: number; extraPay: number; totalSalary: number; presentDays: number }
 
 export default function StaffDashboard({ session }: { session: JWTPayload }) {
-  return (
-    <SalaryPrivacyProvider>
-      <StaffDashboardInner session={session} />
-    </SalaryPrivacyProvider>
-  )
-}
-
-function StaffDashboardInner({ session }: { session: JWTPayload }) {
   const [now, setNow] = useState(new Date())
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [todayAtt, setTodayAtt] = useState<AttendanceRecord | null>(null)
@@ -181,7 +171,7 @@ function StaffDashboardInner({ session }: { session: JWTPayload }) {
       {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
-          <div className="text-xs text-slate-500 uppercase tracking-wide">Today&apos;s Forms</div>
+          <div className="text-xs text-slate-500 uppercase tracking-wide">Today's Forms</div>
           <div className="text-3xl font-bold text-white">{totalFormsToday}</div>
           <div className="text-xs text-slate-500">{workedHours}/12 hours filled</div>
         </div>
@@ -191,22 +181,15 @@ function StaffDashboardInner({ session }: { session: JWTPayload }) {
           <div className="text-xs text-slate-500">This month</div>
         </div>
         <div className="stat-card">
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-slate-500 uppercase tracking-wide">Base Salary</div>
-            <SalaryUnlockButton className="!px-2 !py-1 !text-[10px]" />
-          </div>
-          <div className="text-2xl font-bold text-brand-400">
-            <ProtectedSalary value={salary?.baseSalary || 0} size="lg" className="font-bold text-brand-400" />
-          </div>
+          <div className="text-xs text-slate-500 uppercase tracking-wide">Base Salary</div>
+          <div className="text-2xl font-bold text-brand-400">{formatCurrency(salary?.baseSalary || 0)}</div>
           <div className="text-xs text-slate-500">Monthly</div>
         </div>
         <div className="stat-card">
           <div className="text-xs text-slate-500 uppercase tracking-wide">Total Earned</div>
-          <div className="text-2xl font-bold text-white">
-            <ProtectedSalary value={salary?.totalSalary || 0} size="lg" className="font-bold text-white" />
-          </div>
+          <div className="text-2xl font-bold text-white">{formatCurrency(salary?.totalSalary || 0)}</div>
           {(salary?.extraPay || 0) > 0 && (
-            <div className="text-xs text-emerald-400">+<ProtectedSalary value={salary?.extraPay || 0} size="sm" className="text-emerald-400" /> extra</div>
+            <div className="text-xs text-emerald-400">+{formatCurrency(salary?.extraPay || 0)} extra</div>
           )}
         </div>
       </div>
@@ -312,32 +295,25 @@ function StaffDashboardInner({ session }: { session: JWTPayload }) {
         <div className="card p-6">
           <h2 className="font-semibold text-white mb-4">Monthly Salary Summary</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-slate-800/50 rounded-xl p-4">
-              <div className="text-xs text-slate-500 mb-1">Present Days</div>
-              <div className="text-xl font-bold text-emerald-400">{salary.presentDays}</div>
-            </div>
-            <div className="bg-slate-800/50 rounded-xl p-4">
-              <div className="text-xs text-slate-500 mb-1">Extra Days</div>
-              <div className="text-xl font-bold text-yellow-400">{salary.extraDays}</div>
-            </div>
-            <div className="bg-slate-800/50 rounded-xl p-4">
-              <div className="text-xs text-slate-500 mb-1">Base Salary</div>
-              <ProtectedSalary value={salary.baseSalary} size="lg" className="font-bold text-brand-400" />
-            </div>
-            <div className="bg-slate-800/50 rounded-xl p-4">
-              <div className="text-xs text-slate-500 mb-1">Total Salary</div>
-              <ProtectedSalary value={salary.totalSalary} size="lg" className="font-bold text-white" />
-            </div>
+            {[
+              { label: 'Present Days', value: salary.presentDays, color: 'text-emerald-400' },
+              { label: 'Extra Days', value: salary.extraDays, color: 'text-yellow-400' },
+              { label: 'Base Salary', value: formatCurrency(salary.baseSalary), color: 'text-brand-400' },
+              { label: 'Total Salary', value: formatCurrency(salary.totalSalary), color: 'text-white font-bold' },
+            ].map(item => (
+              <div key={item.label} className="bg-slate-800/50 rounded-xl p-4">
+                <div className="text-xs text-slate-500 mb-1">{item.label}</div>
+                <div className={`text-xl font-bold ${item.color}`}>{item.value}</div>
+              </div>
+            ))}
           </div>
           {salary.extraPay > 0 && (
             <div className="mt-3 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2">
-              Extra pay: <ProtectedSalary value={salary.extraPay} size="sm" className="text-emerald-400" /> for {salary.extraDays} extra days!
+              🎉 Extra pay: {formatCurrency(salary.extraPay)} for {salary.extraDays} extra days!
             </div>
           )}
         </div>
       )}
-
-      <SalaryRevealBar />
     </div>
   )
 }
