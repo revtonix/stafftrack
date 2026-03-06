@@ -3,6 +3,8 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { formatCurrency } from '@/lib/salary'
+import { SalaryPrivacyProvider } from '@/components/ui/SalaryPrivacyProvider'
+import { ProtectedSalary, SalaryRevealBar, SalaryUnlockButton } from '@/components/ui/ProtectedSalary'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -239,13 +241,13 @@ function DetailDrawer({ record, canSeeSalary, onClose }: {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-500">Est. Pay (this day)</span>
                 <span className="text-sm font-bold text-yellow-400">
-                  {estPay > 0 ? formatCurrency(estPay) : '—'}
+                  {estPay > 0 ? <ProtectedSalary value={estPay} size="sm" className="font-bold text-yellow-400" /> : '—'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-500">Monthly Salary</span>
                 <span className="text-sm font-semibold text-slate-300">
-                  {record.monthlySalary ? formatCurrency(record.monthlySalary) : '—'}
+                  {record.monthlySalary ? <ProtectedSalary value={record.monthlySalary} size="sm" className="font-semibold text-slate-300" /> : '—'}
                 </span>
               </div>
             </>
@@ -275,6 +277,14 @@ function SkeletonRow({ cols }: { cols: number }) {
 // Main Page
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AttendancePage() {
+  return (
+    <SalaryPrivacyProvider>
+      <AttendancePageInner />
+    </SalaryPrivacyProvider>
+  )
+}
+
+function AttendancePageInner() {
   const [records,     setRecords]     = useState<AttendanceRecord[]>([])
   const [loading,     setLoading]     = useState(true)
   const [userRole,    setUserRole]    = useState<string>('')
@@ -607,7 +617,7 @@ export default function AttendancePage() {
                       <td><StatusBadge status={status} /></td>
                       {canSeeSalary && (
                         <td className="text-yellow-400 font-semibold text-sm">
-                          {estPay > 0 ? formatCurrency(estPay) : '—'}
+                          {estPay > 0 ? <ProtectedSalary value={estPay} size="sm" className="font-semibold text-yellow-400" /> : '—'}
                         </td>
                       )}
                     </tr>
@@ -628,13 +638,13 @@ export default function AttendancePage() {
                     <td className="text-xs text-slate-500">{summary.present} present</td>
                     {canSeeSalary && (
                       <td className="font-bold text-yellow-400">
-                        {formatCurrency(Math.round(
+                        <ProtectedSalary value={Math.round(
                           filtered.reduce((s, r) => {
                             const hrs    = r.hours ?? calcHours(r.checkIn, r.checkOut)
                             const hrRate = (r.monthlySalary ?? 0) / 26 / 8
                             return s + hrs * hrRate
                           }, 0)
-                        ))}
+                        )} size="sm" className="font-bold text-yellow-400" />
                       </td>
                     )}
                   </tr>
@@ -653,6 +663,7 @@ export default function AttendancePage() {
           onClose={() => setSelected(null)}
         />
       )}
+      <SalaryRevealBar />
     </div>
   )
 }

@@ -11,6 +11,8 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { formatCurrency }    from '@/lib/salary'
 import type { JWTPayload }   from '@/lib/auth'
 import PendingApprovals      from '@/components/dashboard/PendingApprovals'
+import { SalaryPrivacyProvider } from '@/components/ui/SalaryPrivacyProvider'
+import { ProtectedSalary, SalaryRevealBar, SalaryUnlockButton } from '@/components/ui/ProtectedSalary'
 
 interface StaffSummary {
   id: string; name: string; team: string;
@@ -43,6 +45,14 @@ function getShiftDayRange() {
 }
 
 export default function AdminDashboard({ session }: { session: JWTPayload }) {
+  return (
+    <SalaryPrivacyProvider>
+      <AdminDashboardInner session={session} />
+    </SalaryPrivacyProvider>
+  )
+}
+
+function AdminDashboardInner({ session }: { session: JWTPayload }) {
   const [payroll,     setPayroll]     = useState<StaffSummary[]>([])
   const [productivity, setProductivity] = useState<ProductivitySummary | null>(null)
   const [loading,     setLoading]     = useState(true)
@@ -171,8 +181,11 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
           <div className="text-xs text-slate-500">Total across staff</div>
         </div>
         <div className="stat-card">
-          <div className="text-xs text-slate-500 uppercase tracking-wide">Total Payroll</div>
-          <div className="text-2xl font-bold text-yellow-400">{formatCurrency(totalPayroll)}</div>
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-slate-500 uppercase tracking-wide">Total Payroll</div>
+            <SalaryUnlockButton className="!px-2 !py-1 !text-[10px]" />
+          </div>
+          <div className="text-2xl font-bold text-yellow-400"><ProtectedSalary value={totalPayroll} size="lg" className="font-bold text-yellow-400" /></div>
           <div className="text-xs text-slate-500">{presetLabels[preset]}</div>
         </div>
       </div>
@@ -210,7 +223,7 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
             </div>
           </div>
           {liveLoading ? <div className="h-8 w-32 bg-slate-800 rounded animate-pulse mb-1" /> : (
-            <div className="text-2xl font-bold text-brand-400">{formatCurrency(todayTotal)}</div>
+            <div className="text-2xl font-bold text-brand-400"><ProtectedSalary value={todayTotal} size="lg" className="font-bold text-brand-400" /></div>
           )}
           <div className="text-xs text-slate-500 mt-1">Based on hours worked today</div>
         </div>
@@ -223,7 +236,7 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
             </div>
           </div>
           {liveLoading ? <div className="h-8 w-32 bg-slate-800 rounded animate-pulse mb-1" /> : (
-            <div className="text-2xl font-bold text-yellow-400">{formatCurrency(grandTotal)}</div>
+            <div className="text-2xl font-bold text-yellow-400"><ProtectedSalary value={grandTotal} size="lg" className="font-bold text-yellow-400" /></div>
           )}
           <div className="text-xs text-slate-500 mt-1">All time earnings</div>
         </div>
@@ -259,16 +272,16 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
                     <td className="font-semibold text-white">{r.name}</td>
                     <td><span className={r.team === 'DAY' ? 'badge-yellow' : 'badge-purple'}>{r.team}</span></td>
                     <td className="text-slate-300">{r.hoursToday > 0 ? `${r.hoursToday}h` : '—'}</td>
-                    <td className="text-slate-400 text-xs">{r.hourlyRate > 0 ? `${formatCurrency(r.hourlyRate)}/hr` : '—'}</td>
-                    <td className="font-bold text-brand-400">{r.todaySalary > 0 ? formatCurrency(r.todaySalary) : '—'}</td>
-                    <td className="font-bold text-yellow-400">{r.totalSalary > 0 ? formatCurrency(r.totalSalary) : '—'}</td>
+                    <td className="text-slate-400 text-xs">{r.hourlyRate > 0 ? <><ProtectedSalary value={r.hourlyRate} size="sm" className="text-slate-400" />/hr</> : '—'}</td>
+                    <td className="font-bold text-brand-400">{r.todaySalary > 0 ? <ProtectedSalary value={r.todaySalary} size="sm" className="font-bold text-brand-400" /> : '—'}</td>
+                    <td className="font-bold text-yellow-400">{r.totalSalary > 0 ? <ProtectedSalary value={r.totalSalary} size="sm" className="font-bold text-yellow-400" /> : '—'}</td>
                   </tr>
                 ))}
                 {liveRows.length > 0 && (
                   <tr className="bg-slate-800/50">
                     <td colSpan={4} className="font-bold text-slate-300">Total</td>
-                    <td className="font-bold text-brand-400">{formatCurrency(todayTotal)}</td>
-                    <td className="font-bold text-yellow-400">{formatCurrency(grandTotal)}</td>
+                    <td className="font-bold text-brand-400"><ProtectedSalary value={todayTotal} size="sm" className="font-bold text-brand-400" /></td>
+                    <td className="font-bold text-yellow-400"><ProtectedSalary value={grandTotal} size="sm" className="font-bold text-yellow-400" /></td>
                   </tr>
                 )}
               </tbody>
@@ -342,22 +355,23 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
                     <td><span className={s.team === 'DAY' ? 'badge-yellow' : 'badge-purple'}>{s.team}</span></td>
                     <td>{s.presentDays}</td>
                     <td className="text-yellow-400">{s.extraDays > 0 ? `+${s.extraDays}` : '—'}</td>
-                    <td>{formatCurrency(s.baseSalary)}</td>
-                    <td className="text-emerald-400">{s.extraPay > 0 ? formatCurrency(s.extraPay) : '—'}</td>
-                    <td className="font-bold text-white">{formatCurrency(s.totalSalary)}</td>
+                    <td><ProtectedSalary value={s.baseSalary} size="sm" className="text-white" /></td>
+                    <td className="text-emerald-400">{s.extraPay > 0 ? <ProtectedSalary value={s.extraPay} size="sm" className="text-emerald-400" /> : '—'}</td>
+                    <td className="font-bold text-white"><ProtectedSalary value={s.totalSalary} size="sm" className="font-bold text-white" /></td>
                   </tr>
                 ))}
                 <tr className="bg-slate-800/50">
                   <td colSpan={4} className="font-bold text-slate-300">Total</td>
-                  <td className="font-bold">{formatCurrency(payroll.reduce((a,s) => a + s.baseSalary, 0))}</td>
-                  <td className="font-bold text-emerald-400">{formatCurrency(payroll.reduce((a,s) => a + s.extraPay, 0))}</td>
-                  <td className="font-bold text-yellow-400">{formatCurrency(totalPayroll)}</td>
+                  <td className="font-bold"><ProtectedSalary value={payroll.reduce((a,s) => a + s.baseSalary, 0)} size="sm" className="font-bold text-white" /></td>
+                  <td className="font-bold text-emerald-400"><ProtectedSalary value={payroll.reduce((a,s) => a + s.extraPay, 0)} size="sm" className="font-bold text-emerald-400" /></td>
+                  <td className="font-bold text-yellow-400"><ProtectedSalary value={totalPayroll} size="sm" className="font-bold text-yellow-400" /></td>
                 </tr>
               </tbody>
             </table>
           </div>
         )}
       </div>
+      <SalaryRevealBar />
     </div>
   )
 }

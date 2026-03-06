@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { formatCurrency } from '@/lib/salary'
+import { ProtectedSalary } from '@/components/ui/ProtectedSalary'
 
 interface PendingRecord {
   id:            string
@@ -270,7 +271,7 @@ export default function PendingApprovals({ role }: { role: string }) {
                       </td>
                       {canSeeSalary && (
                         <td className="text-yellow-400 font-semibold text-sm">
-                          {estPay > 0 ? formatCurrency(estPay) : '—'}
+                          {estPay > 0 ? <ProtectedSalary value={estPay} size="sm" className="font-semibold text-yellow-400" /> : '—'}
                         </td>
                       )}
                       <td>

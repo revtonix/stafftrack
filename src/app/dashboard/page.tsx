@@ -199,7 +199,7 @@ export default function DashboardPage() {
   }, [])
 
   return (
-    <SalaryPrivacyProvider bypass={role === 'ADMIN'}>
+    <SalaryPrivacyProvider>
       <DashboardPageInner role={role} />
     </SalaryPrivacyProvider>
   )
