@@ -1,7 +1,7 @@
 'use client'
 // src/components/dashboard/StaffDashboard.tsx
 import { useState, useEffect, useCallback } from 'react'
-import { formatTime, formatCurrency } from '@/lib/salary'
+import { formatTime, formatCurrency, getAttendanceHours } from '@/lib/salary'
 import { getShiftDateStr, getCurrentShift, getShiftLabel, getISTTimeString, getISTFullDate } from '@/lib/shiftDay'
 import type { JWTPayload } from '@/lib/auth'
 
@@ -9,6 +9,10 @@ interface Campaign { id: string; name: string; team: string }
 interface AttendanceRecord { id: string; date: string; checkIn: string | null; checkOut: string | null }
 interface WorkLog { id: string; hourIndex: number; campaignId: string; formsCount: number; note?: string; campaign: { name: string } }
 interface SalarySummary { baseSalary: number; extraDays: number; extraPay: number; totalSalary: number; presentDays: number }
+interface DashStats {
+  myYesterday: { checkIn: string | null; checkOut: string | null; hoursWorked: number; formsCount: number } | null
+  myHistory: { date: string; checkIn: string | null; checkOut: string | null; hoursWorked: number; formsCount: number }[]
+}
 
 export default function StaffDashboard({ session }: { session: JWTPayload }) {
   const [now, setNow] = useState(new Date())
@@ -16,16 +20,15 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
   const [todayAtt, setTodayAtt] = useState<AttendanceRecord | null>(null)
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([])
   const [salary, setSalary] = useState<SalarySummary | null>(null)
+  const [dashStats, setDashStats] = useState<DashStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [checkLoading, setCheckLoading] = useState(false)
 
   // Per-hour form state
   const [hourData, setHourData] = useState<Record<number, { campaignId: string; formsCount: string; note: string; saving: boolean; saved: boolean }>>({})
 
-  // Use shift-day logic: before 7 AM IST = previous day's shift
   const todayStr = getShiftDateStr(now)
 
-  // Live clock
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(t)
@@ -33,17 +36,19 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const [campRes, attRes, logRes, salRes] = await Promise.all([
+    const [campRes, attRes, logRes, salRes, dashRes] = await Promise.all([
       fetch('/api/campaigns'),
       fetch(`/api/attendance?from=${todayStr}&to=${todayStr}`),
       fetch(`/api/worklogs?date=${todayStr}`),
       fetch('/api/reports/salary'),
+      fetch('/api/dashboard'),
     ])
-    const [camp, att, logs, sal] = await Promise.all([campRes.json(), attRes.json(), logRes.json(), salRes.json()])
+    const [camp, att, logs, sal, dash] = await Promise.all([campRes.json(), attRes.json(), logRes.json(), salRes.json(), dashRes.json()])
 
     if (camp.success) setCampaigns(camp.data)
     if (att.success) setTodayAtt(att.data[0] || null)
     if (sal.success) setSalary(sal.data)
+    if (dash.success) setDashStats(dash.data)
 
     if (logs.success) {
       setWorkLogs(logs.data)
@@ -108,6 +113,12 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
   const totalFormsToday = workLogs.reduce((a, l) => a + l.formsCount, 0)
   const workedHours = workLogs.filter(l => l.formsCount > 0).length
 
+  const todayHoursWorked = todayAtt?.checkIn
+    ? todayAtt.checkOut
+      ? getAttendanceHours(new Date(todayAtt.checkIn), new Date(todayAtt.checkOut))
+      : Math.round(((now.getTime() - new Date(todayAtt.checkIn).getTime()) / 3600000) * 100) / 100
+    : 0
+
   const h = now.getHours()
   const greeting = h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening'
   const shiftType = getCurrentShift(now)
@@ -123,7 +134,7 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">{greeting}, {session.username} 👋</h1>
+        <h1 className="text-2xl font-bold text-white">{greeting}, {session.username}</h1>
         <p className="text-slate-400 text-sm mt-1">
           {getISTFullDate(now)}
           {' '}&middot;{' '}
@@ -134,7 +145,6 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
       {/* Check In/Out + Clock */}
       <div className="card p-6">
         <div className="flex flex-col md:flex-row md:items-center gap-6">
-          {/* Clock */}
           <div className="flex-1 text-center md:text-left">
             <div className="text-4xl font-bold text-white tabular-nums tracking-tight">
               {getISTTimeString(now)} <span className="text-lg text-slate-500">IST</span>
@@ -147,7 +157,7 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
                 </span>
               )}
               {checkedOut && (
-                <span className="badge-green text-sm">Day Complete ✓</span>
+                <span className="badge-green text-sm">Day Complete</span>
               )}
               {!checkedIn && (
                 <span className="badge-red text-sm">Not checked in</span>
@@ -155,21 +165,12 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
             </div>
           </div>
 
-          {/* Buttons */}
           <div className="flex gap-3 justify-center">
-            <button
-              onClick={handleCheckIn}
-              disabled={checkedIn || checkLoading}
-              className="btn-success btn-lg"
-            >
+            <button onClick={handleCheckIn} disabled={checkedIn || checkLoading} className="btn-success btn-lg">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
               Check In
             </button>
-            <button
-              onClick={handleCheckOut}
-              disabled={!checkedIn || checkedOut || checkLoading}
-              className="btn-danger btn-lg"
-            >
+            <button onClick={handleCheckOut} disabled={!checkedIn || checkedOut || checkLoading} className="btn-danger btn-lg">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
               Check Out
             </button>
@@ -177,7 +178,31 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats Row 1: Login/Logout/Hours */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="stat-card">
+          <div className="text-xs text-slate-500 uppercase tracking-wide">Login Time</div>
+          <div className="text-2xl font-bold text-white">{todayAtt?.checkIn ? formatTime(todayAtt.checkIn) : '--:--'}</div>
+          <div className="text-xs text-slate-500">Today</div>
+        </div>
+        <div className="stat-card">
+          <div className="text-xs text-slate-500 uppercase tracking-wide">Logout Time</div>
+          <div className="text-2xl font-bold text-white">{todayAtt?.checkOut ? formatTime(todayAtt.checkOut) : checkedIn ? 'Active' : '--:--'}</div>
+          <div className="text-xs text-slate-500">Today</div>
+        </div>
+        <div className="stat-card">
+          <div className="text-xs text-slate-500 uppercase tracking-wide">Hours Worked</div>
+          <div className="text-2xl font-bold text-brand-400">{todayHoursWorked.toFixed(1)}h</div>
+          <div className="text-xs text-slate-500">Today {checkedIn && !checkedOut && '(live)'}</div>
+        </div>
+        <div className="stat-card">
+          <div className="text-xs text-slate-500 uppercase tracking-wide">Yesterday</div>
+          <div className="text-2xl font-bold text-slate-300">{dashStats?.myYesterday ? `${dashStats.myYesterday.hoursWorked.toFixed(1)}h` : 'Off'}</div>
+          <div className="text-xs text-slate-500">{dashStats?.myYesterday ? `${dashStats.myYesterday.formsCount} forms` : 'No attendance'}</div>
+        </div>
+      </div>
+
+      {/* Quick Stats Row 2: Forms/Attendance/Salary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
           <div className="text-xs text-slate-500 uppercase tracking-wide">Today's Forms</div>
@@ -203,6 +228,42 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
         </div>
       </div>
 
+      {/* Work Session History (Last 7 Days) */}
+      {dashStats?.myHistory && dashStats.myHistory.length > 0 && (
+        <div className="card">
+          <div className="px-6 py-4 border-b border-slate-800">
+            <h2 className="font-semibold text-white">Work Session History</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Last 7 days</p>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Login</th>
+                  <th>Logout</th>
+                  <th>Hours</th>
+                  <th>Forms</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dashStats.myHistory.map((day) => (
+                  <tr key={day.date}>
+                    <td className="font-semibold text-white">
+                      {new Date(day.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })}
+                    </td>
+                    <td className="text-slate-300">{day.checkIn ? formatTime(day.checkIn) : '--:--'}</td>
+                    <td className="text-slate-300">{day.checkOut ? formatTime(day.checkOut) : '--:--'}</td>
+                    <td className="font-mono text-brand-400">{day.hoursWorked.toFixed(1)}h</td>
+                    <td className="font-bold text-white">{day.formsCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Hourly Productivity Grid */}
       <div className="card">
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
@@ -216,7 +277,6 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
         </div>
 
         <div className="p-4 space-y-2">
-          {/* Header */}
           <div className="hidden md:grid grid-cols-12 gap-2 px-2 mb-1">
             <div className="col-span-1 text-xs text-slate-500 uppercase">Hour</div>
             <div className="col-span-5 text-xs text-slate-500 uppercase">Campaign</div>
@@ -225,32 +285,27 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
             <div className="col-span-1 text-xs text-slate-500 uppercase">Save</div>
           </div>
 
-          {Array.from({ length: 12 }, (_, i) => i + 1).map(h => {
-            const hd = hourData[h]
+          {Array.from({ length: 12 }, (_, i) => i + 1).map(hr => {
+            const hd = hourData[hr]
             if (!hd) return null
             const isSaved = hd.saved && !hd.saving
             return (
-              <div key={h} className={`rounded-xl border transition-colors ${isSaved && parseInt(hd.formsCount || '0') > 0 ? 'border-brand-600/30 bg-brand-600/5' : 'border-slate-800 bg-slate-800/30'}`}>
+              <div key={hr} className={`rounded-xl border transition-colors ${isSaved && parseInt(hd.formsCount || '0') > 0 ? 'border-brand-600/30 bg-brand-600/5' : 'border-slate-800 bg-slate-800/30'}`}>
                 <div className="grid grid-cols-2 md:grid-cols-12 gap-2 p-3 items-center">
-                  {/* Hour label */}
                   <div className="col-span-1 text-center">
                     <span className={`text-xs font-bold px-2 py-1 rounded-lg ${isSaved && parseInt(hd.formsCount || '0') > 0 ? 'bg-brand-600/20 text-brand-400' : 'bg-slate-800 text-slate-400'}`}>
-                      H{h}
+                      H{hr}
                     </span>
                   </div>
-
-                  {/* Campaign dropdown */}
                   <div className="col-span-1 md:col-span-5">
                     <select
                       className="input text-xs py-2"
                       value={hd.campaignId}
-                      onChange={e => setHourData(p => ({ ...p, [h]: { ...p[h], campaignId: e.target.value, saved: false } }))}
+                      onChange={e => setHourData(p => ({ ...p, [hr]: { ...p[hr], campaignId: e.target.value, saved: false } }))}
                     >
                       {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
-
-                  {/* Forms count */}
                   <div className="col-span-1 md:col-span-2">
                     <input
                       type="number"
@@ -258,25 +313,21 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
                       className="input text-xs py-2 text-center font-mono"
                       placeholder="0"
                       value={hd.formsCount}
-                      onChange={e => setHourData(p => ({ ...p, [h]: { ...p[h], formsCount: e.target.value, saved: false } }))}
+                      onChange={e => setHourData(p => ({ ...p, [hr]: { ...p[hr], formsCount: e.target.value, saved: false } }))}
                     />
                   </div>
-
-                  {/* Note */}
                   <div className="col-span-2 md:col-span-3">
                     <input
                       type="text"
                       className="input text-xs py-2"
                       placeholder="Optional note..."
                       value={hd.note}
-                      onChange={e => setHourData(p => ({ ...p, [h]: { ...p[h], note: e.target.value, saved: false } }))}
+                      onChange={e => setHourData(p => ({ ...p, [hr]: { ...p[hr], note: e.target.value, saved: false } }))}
                     />
                   </div>
-
-                  {/* Save button */}
                   <div className="col-span-2 md:col-span-1 flex justify-end md:justify-center">
                     <button
-                      onClick={() => saveHour(h)}
+                      onClick={() => saveHour(hr)}
                       disabled={hd.saving}
                       className={`btn btn-sm ${isSaved ? 'btn-secondary' : 'btn-primary'}`}
                     >
@@ -318,7 +369,7 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
           </div>
           {salary.extraPay > 0 && (
             <div className="mt-3 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2">
-              🎉 Extra pay: {formatCurrency(salary.extraPay)} for {salary.extraDays} extra days!
+              Extra pay: {formatCurrency(salary.extraPay)} for {salary.extraDays} extra days!
             </div>
           )}
         </div>
