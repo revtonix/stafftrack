@@ -4,28 +4,31 @@ import { getSession } from '@/lib/auth'
 import { ok, unauthorized, forbidden } from '@/lib/api'
 import { prisma } from '@/lib/prisma'
 import { calculateSalary } from '@/lib/salary'
+import { getShiftDate } from '@/lib/shiftDay'
 
 function getDateRange(preset: string | null, from: string | null, to: string | null) {
   const now = new Date()
+  const shiftToday = getShiftDate(now)
+
   if (preset === 'today') {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    return { start: d, end: new Date(d.getTime() + 86400000 - 1) }
+    // Today = current shift day (7AM-7AM window)
+    return { start: shiftToday, end: new Date(shiftToday.getTime() + 86400000 - 1) }
   }
   if (preset === '7days') {
-    const s = new Date(now); s.setDate(s.getDate() - 6); s.setHours(0,0,0,0)
-    return { start: s, end: now }
+    const s = new Date(shiftToday); s.setDate(s.getDate() - 6)
+    return { start: s, end: new Date(shiftToday.getTime() + 86400000 - 1) }
   }
   if (preset === '30days') {
-    const s = new Date(now); s.setDate(s.getDate() - 29); s.setHours(0,0,0,0)
-    return { start: s, end: now }
+    const s = new Date(shiftToday); s.setDate(s.getDate() - 29)
+    return { start: s, end: new Date(shiftToday.getTime() + 86400000 - 1) }
   }
   if (preset === '6months') {
-    const s = new Date(now); s.setMonth(s.getMonth() - 6); s.setHours(0,0,0,0)
-    return { start: s, end: now }
+    const s = new Date(shiftToday); s.setMonth(s.getMonth() - 6)
+    return { start: s, end: new Date(shiftToday.getTime() + 86400000 - 1) }
   }
   if (preset === 'thisMonth' || (!preset && !from && !to)) {
-    const s = new Date(now.getFullYear(), now.getMonth(), 1)
-    const e = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+    const s = new Date(shiftToday.getFullYear(), shiftToday.getMonth(), 1)
+    const e = new Date(shiftToday.getFullYear(), shiftToday.getMonth() + 1, 0, 23, 59, 59)
     return { start: s, end: e }
   }
   const start = from ? new Date(from) : new Date(now.getFullYear(), now.getMonth(), 1)
@@ -54,7 +57,7 @@ export async function GET(req: NextRequest) {
 
   const staffIds = staffList.filter(s => s.profile).map(s => s.id)
 
-  // Batch query: count attendance days for all staff in one query
+  // Batch query: count attendance days for all staff in date range
   const attendanceCounts = await prisma.attendance.groupBy({
     by: ['staffId'],
     where: { staffId: { in: staffIds }, date: { gte: start, lte: end }, checkIn: { not: null } },

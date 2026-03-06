@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { Role } from '@prisma/client'
+import { getISTTimeString, getISTDateLabel, getCurrentShift } from '@/lib/shiftDay'
 
 const ROLE_LABELS: Record<Role, string> = {
   ADMIN: 'Administrator',
@@ -38,14 +39,15 @@ export default function TopBar({ username, role }: { username: string; role: Rol
       <div className="flex items-center gap-3">
         <div>
           <p className="text-sm font-semibold text-white leading-none">{username}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{getISTDateLabel(now)}</p>
         </div>
         <span className={ROLE_COLORS[role] + ' hidden sm:inline-flex'}>{ROLE_LABELS[role]}</span>
       </div>
       <div className="flex items-center gap-3">
         <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
-          <span className="live-dot" />
-          <span className="font-mono tabular-nums text-white">{now.toLocaleTimeString('en-IN', { hour12: false })}</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${getCurrentShift(now) === 'MORNING' ? 'bg-yellow-400' : 'bg-purple-400'}`} />
+          <span className="font-mono tabular-nums text-white">{getISTTimeString(now)}</span>
+          <span className="text-slate-600">IST</span>
         </div>
         <button
           onClick={logout}

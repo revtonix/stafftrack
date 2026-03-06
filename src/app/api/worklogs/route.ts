@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { ok, err, unauthorized, WorkLogSchema } from '@/lib/api'
 import { prisma } from '@/lib/prisma'
+import { getShiftDateStr } from '@/lib/shiftDay'
 
 // GET: fetch worklogs
 export async function GET(req: NextRequest) {
@@ -15,6 +16,7 @@ export async function GET(req: NextRequest) {
   const from = searchParams.get('from')
   const to = searchParams.get('to')
   const all = searchParams.get('all') // Admin/TL: fetch all staff worklogs
+  const shiftDay = searchParams.get('shiftDay') // use shift-day for "today"
 
   const where: Record<string, unknown> = {}
 
@@ -25,7 +27,10 @@ export async function GET(req: NextRequest) {
     where.staffId = (session.role === 'ADMIN' && staffId) ? staffId : session.userId
   }
 
-  if (date) {
+  if (shiftDay === 'true') {
+    // Use shift-day logic for today's date
+    where.date = new Date(getShiftDateStr())
+  } else if (date) {
     where.date = new Date(date)
   } else if (from || to) {
     where.date = {}
@@ -45,7 +50,7 @@ export async function GET(req: NextRequest) {
   return ok(logs)
 }
 
-// POST: upsert a work log entry (supports multiple campaigns per hour)
+// POST: upsert a work log entry
 export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return unauthorized()

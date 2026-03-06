@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth'
 import { ok, unauthorized } from '@/lib/api'
 import { prisma } from '@/lib/prisma'
 import { calculateSalary } from '@/lib/salary'
+import { getShiftDate } from '@/lib/shiftDay'
 
 export async function GET(req: NextRequest) {
   const session = await getSession()
@@ -11,10 +12,10 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const month = searchParams.get('month') // format: YYYY-MM
-  const now = new Date()
+  const shiftToday = getShiftDate()
   const [year, mon] = month
     ? month.split('-').map(Number)
-    : [now.getFullYear(), now.getMonth() + 1]
+    : [shiftToday.getFullYear(), shiftToday.getMonth() + 1]
 
   const start = new Date(year, mon - 1, 1)
   const end = new Date(year, mon, 0, 23, 59, 59)

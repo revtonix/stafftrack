@@ -2,6 +2,7 @@
 // src/components/dashboard/StaffDashboard.tsx
 import { useState, useEffect, useCallback } from 'react'
 import { formatTime, formatCurrency } from '@/lib/salary'
+import { getShiftDateStr, getCurrentShift, getShiftLabel, getISTTimeString, getISTFullDate } from '@/lib/shiftDay'
 import type { JWTPayload } from '@/lib/auth'
 
 interface Campaign { id: string; name: string; team: string }
@@ -21,7 +22,8 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
   // Per-hour form state
   const [hourData, setHourData] = useState<Record<number, { campaignId: string; formsCount: string; note: string; saving: boolean; saved: boolean }>>({})
 
-  const todayStr = now.toISOString().split('T')[0]
+  // Use shift-day logic: before 7 AM IST = previous day's shift
+  const todayStr = getShiftDateStr(now)
 
   // Live clock
   useEffect(() => {
@@ -106,7 +108,10 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
   const totalFormsToday = workLogs.reduce((a, l) => a + l.formsCount, 0)
   const workedHours = workLogs.filter(l => l.formsCount > 0).length
 
-  const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 17 ? 'Good Afternoon' : 'Good Evening'
+  const h = now.getHours()
+  const greeting = h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening'
+  const shiftType = getCurrentShift(now)
+  const shiftLabel = getShiftLabel(now)
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -119,7 +124,11 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">{greeting}, {session.username} 👋</h1>
-        <p className="text-slate-400 text-sm mt-1">{now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        <p className="text-slate-400 text-sm mt-1">
+          {getISTFullDate(now)}
+          {' '}&middot;{' '}
+          <span className={shiftType === 'MORNING' ? 'text-yellow-400' : 'text-purple-400'}>{shiftLabel}</span>
+        </p>
       </div>
 
       {/* Check In/Out + Clock */}
@@ -128,7 +137,7 @@ export default function StaffDashboard({ session }: { session: JWTPayload }) {
           {/* Clock */}
           <div className="flex-1 text-center md:text-left">
             <div className="text-4xl font-bold text-white tabular-nums tracking-tight">
-              {now.toLocaleTimeString('en-IN')}
+              {getISTTimeString(now)} <span className="text-lg text-slate-500">IST</span>
             </div>
             <div className="mt-2 flex items-center gap-2 justify-center md:justify-start">
               {checkedIn && !checkedOut && (
