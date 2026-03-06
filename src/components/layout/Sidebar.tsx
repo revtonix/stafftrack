@@ -72,16 +72,16 @@ export default function Sidebar({ role }: { role: Role }) {
   const NavContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-slate-800">
+      <div className="px-6 py-5 border-b border-slate-800/60">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand-600/30">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
           <div>
-            <div className="font-bold text-sm text-white">StaffTrack</div>
-            <div className="text-xs text-slate-500">Pro Edition</div>
+            <div className="font-bold text-sm text-white tracking-tight">StaffTrack</div>
+            <div className="text-[10px] text-brand-400 font-semibold uppercase tracking-widest">Pro Edition</div>
           </div>
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function Sidebar({ role }: { role: Role }) {
       </nav>
 
       {/* Role badge */}
-      <div className="px-4 py-4 border-t border-slate-800">
+      <div className="px-4 py-4 border-t border-slate-800/60">
         <div className="text-xs text-slate-500 text-center">
           Role: <span className="text-slate-400 font-medium">{role.replace('_', ' ')}</span>
         </div>
@@ -121,7 +121,7 @@ export default function Sidebar({ role }: { role: Role }) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-60 bg-slate-900 border-r border-slate-800 flex-shrink-0">
+      <aside className="hidden lg:flex flex-col w-60 bg-slate-900/90 backdrop-blur-md border-r border-slate-800/60 flex-shrink-0">
         <NavContent />
       </aside>
 
@@ -142,7 +142,7 @@ export default function Sidebar({ role }: { role: Role }) {
       {mobileOpen && (
         <>
           <div className="lg:hidden fixed inset-0 bg-black/60 z-40" onClick={() => setMobileOpen(false)} />
-          <aside className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-slate-900 border-r border-slate-800 z-50 overflow-hidden">
+          <aside className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-slate-900/95 backdrop-blur-md border-r border-slate-800/60 z-50 overflow-hidden">
             <NavContent />
           </aside>
         </>
