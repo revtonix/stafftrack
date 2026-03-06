@@ -2,10 +2,8 @@
 // src/app/dashboard/salary/page.tsx
 import { useState, useEffect } from 'react'
 import { formatCurrency } from '@/lib/salary'
-import { SalaryPrivacyProvider } from '@/components/ui/SalaryPrivacyProvider'
-import { ProtectedSalary, SalaryRevealBar, SalaryUnlockButton } from '@/components/ui/ProtectedSalary'
 
-function SalaryPageInner() {
+export default function SalaryPage() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [month, setMonth] = useState(() => {
@@ -22,12 +20,9 @@ function SalaryPageInner() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-white">My Salary</h1>
-          <p className="text-slate-400 text-sm mt-1">Monthly earnings breakdown</p>
-        </div>
-        <SalaryUnlockButton />
+      <div>
+        <h1 className="text-2xl font-bold text-white">My Salary</h1>
+        <p className="text-slate-400 text-sm mt-1">Monthly earnings breakdown</p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -48,32 +43,25 @@ function SalaryPageInner() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
                 <p className="text-slate-400 text-sm mb-2">Total Salary — {data.month}</p>
-                <div className="text-5xl font-bold text-white">
-                  <ProtectedSalary value={data.totalSalary} size="xl" className="font-bold text-white" />
-                </div>
+                <div className="text-5xl font-bold text-white">{formatCurrency(data.totalSalary)}</div>
                 {data.extraPay > 0 && (
                   <p className="text-emerald-400 text-sm mt-2">
-                    Includes <ProtectedSalary value={data.extraPay} size="sm" className="text-emerald-400" /> extra for {data.extraDays} extra days
+                    Includes {formatCurrency(data.extraPay)} extra for {data.extraDays} extra days 🎉
                   </p>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-800 rounded-xl p-4 text-center">
-                  <div className="text-xl font-bold text-emerald-400">{data.presentDays}</div>
-                  <div className="text-xs text-slate-500 mt-1">Present Days</div>
-                </div>
-                <div className="bg-slate-800 rounded-xl p-4 text-center">
-                  <div className="text-xl font-bold text-yellow-400">{data.extraDays}</div>
-                  <div className="text-xs text-slate-500 mt-1">Extra Days</div>
-                </div>
-                <div className="bg-slate-800 rounded-xl p-4 text-center">
-                  <ProtectedSalary value={data.baseSalary} size="lg" className="font-bold text-brand-400" />
-                  <div className="text-xs text-slate-500 mt-1">Base Salary</div>
-                </div>
-                <div className="bg-slate-800 rounded-xl p-4 text-center">
-                  <ProtectedSalary value={data.extraPay} size="lg" className="font-bold text-emerald-400" />
-                  <div className="text-xs text-slate-500 mt-1">Extra Pay</div>
-                </div>
+                {[
+                  { label: 'Present Days', value: data.presentDays, color: 'text-emerald-400' },
+                  { label: 'Extra Days', value: data.extraDays, color: 'text-yellow-400' },
+                  { label: 'Base Salary', value: formatCurrency(data.baseSalary), color: 'text-brand-400' },
+                  { label: 'Extra Pay', value: formatCurrency(data.extraPay), color: 'text-emerald-400' },
+                ].map(item => (
+                  <div key={item.label} className="bg-slate-800 rounded-xl p-4 text-center">
+                    <div className={`text-xl font-bold ${item.color}`}>{item.value}</div>
+                    <div className="text-xs text-slate-500 mt-1">{item.label}</div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -83,8 +71,8 @@ function SalaryPageInner() {
             <h3 className="font-semibold text-white mb-3">Salary Calculation Rule</h3>
             <div className="space-y-2 text-sm text-slate-400">
               <p>• Base salary is paid for <span className="text-white">26 working days</span> per month</p>
-              <p>• Extra days are calculated at <ProtectedSalary value={formatCurrency(data.baseSalary / 30)} size="sm" className="text-white font-semibold" />/day (monthly / 30)</p>
-              <p>• For {data.presentDays} days present: <ProtectedSalary value={formatCurrency(data.totalSalary)} size="sm" className="text-brand-400 font-semibold" /></p>
+              <p>• Extra days are calculated at <span className="text-white">{formatCurrency(data.baseSalary / 30)}/day</span> (monthly ÷ 30)</p>
+              <p>• For {data.presentDays} days present: <span className="text-brand-400 font-semibold">{formatCurrency(data.totalSalary)}</span></p>
             </div>
           </div>
 
@@ -112,16 +100,6 @@ function SalaryPageInner() {
           )}
         </div>
       )}
-
-      <SalaryRevealBar />
     </div>
-  )
-}
-
-export default function SalaryPage() {
-  return (
-    <SalaryPrivacyProvider>
-      <SalaryPageInner />
-    </SalaryPrivacyProvider>
   )
 }

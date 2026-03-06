@@ -1,10 +1,4 @@
 // prisma/schema.prisma
-// ─────────────────────────────────────────────────────────────────────────────
-// CHANGES: 
-//   1. Add ApprovalStatus enum
-//   2. Add approval fields to Attendance model
-//   3. Everything else UNCHANGED
-// ─────────────────────────────────────────────────────────────────────────────
 
 generator client {
   provider = "prisma-client-js"
@@ -38,31 +32,21 @@ enum LeaveStatus {
   REJECTED
 }
 
-// ── NEW ───────────────────────────────────────────────────────────────────────
-enum ApprovalStatus {
-  PENDING_APPROVAL
-  APPROVED
-  REJECTED
-}
-
 model User {
-  id            String   @id @default(cuid())
-  username      String   @unique
-  usernameLower String   @unique
-  passwordHash  String
-  role          Role     @default(STAFF)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  username     String   @unique
+  usernameLower String  @unique
+  passwordHash String
+  role         Role     @default(STAFF)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  profile       StaffProfile?
-  attendance    Attendance[]
-  workLogs      HourlyWorkLog[]
-  leaveRequests LeaveRequest[]  @relation("StaffLeaves")
-  decidedLeaves LeaveRequest[]  @relation("DecidedLeaves")
-  // ── NEW: attendance approvals given by this user
-  approvedAttendance Attendance[] @relation("AttendanceApprover")
-  hourEntries   HourEntry[]    @relation("StaffHourEntries")
-  auditLogs     AuditLog[]
+  profile      StaffProfile?
+  attendance   Attendance[]
+  workLogs     HourlyWorkLog[]
+  leaveRequests LeaveRequest[] @relation("StaffLeaves")
+  decidedLeaves LeaveRequest[] @relation("DecidedLeaves")
+  auditLogs    AuditLog[]
 
   @@index([usernameLower])
 }
@@ -93,29 +77,17 @@ model Campaign {
 }
 
 model Attendance {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   staffId   String
-  staff     User      @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  date      DateTime  @db.Date
+  staff     User     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
   checkIn   DateTime?
   checkOut  DateTime?
-
-  // ── NEW: approval fields ──────────────────────────────────────────────────
-  approvalStatus  ApprovalStatus @default(PENDING_APPROVAL)
-  approvedById    String?
-  approvedBy      User?          @relation("AttendanceApprover", fields: [approvedById], references: [id])
-  approvedAt      DateTime?
-  approvedHours   Float?         // TL/Admin can override hours
-  approvalNote    String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([staffId, date])
   @@index([staffId, date])
-  // ── NEW indexes ───────────────────────────────────────────────────────────
-  @@index([approvalStatus])
-  @@index([approvedById])
 }
 
 model HourlyWorkLog {
@@ -125,13 +97,13 @@ model HourlyWorkLog {
   campaignId  String
   campaign    Campaign @relation(fields: [campaignId], references: [id])
   date        DateTime @db.Date
-  hourIndex   Int
+  hourIndex   Int      // 1-12
   formsCount  Int      @default(0)
   note        String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@unique([staffId, date, hourIndex])
+  @@unique([staffId, date, hourIndex, campaignId])
   @@index([staffId, date])
   @@index([campaignId, date])
 }
@@ -153,35 +125,6 @@ model LeaveRequest {
 
   @@index([staffId])
   @@index([status])
-}
-
-model HourEntry {
-  id        String   @id @default(cuid())
-  staffId   String
-  staff     User     @relation("StaffHourEntries", fields: [staffId], references: [id], onDelete: Cascade)
-  shiftKey  String
-  hourStart DateTime
-  hourEnd   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  campaigns CampaignWork[]
-
-  @@unique([staffId, shiftKey, hourStart])
-  @@index([staffId, shiftKey])
-}
-
-model CampaignWork {
-  id            String    @id @default(cuid())
-  hourEntryId   String
-  hourEntry     HourEntry @relation(fields: [hourEntryId], references: [id], onDelete: Cascade)
-  name          String
-  count         Int       @default(0)
-  createdByRole String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([hourEntryId])
 }
 
 model AuditLog {

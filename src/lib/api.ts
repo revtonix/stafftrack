@@ -53,6 +53,9 @@ export const LeaveSchema = z.object({
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   type: z.enum(['PAID', 'UNPAID']),
   reason: z.string().min(5).max(500),
+}).refine(data => data.dateTo >= data.dateFrom, {
+  message: 'End date must be on or after start date',
+  path: ['dateTo'],
 })
 
 export const UpdateLeaveSchema = z.object({
@@ -70,6 +73,6 @@ export const UpdateCampaignSchema = z.object({
 
 export const DateRangeSchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  to: z.string().regex(/^\d{4}-\d{4}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   preset: z.enum(['today', '7days', '30days', 'thisMonth', '6months']).optional(),
 })
