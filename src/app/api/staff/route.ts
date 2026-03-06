@@ -8,7 +8,7 @@ import { getSession }            from '@/lib/auth'
 import { canViewSalary }         from '@/lib/salaryGuard'
 
 export async function GET(req: Request) {
-  const auth = await getSession(req)
+  const auth = await getSession()
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const staffList = await prisma.staffProfile.findMany({

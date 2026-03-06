@@ -8,7 +8,7 @@ import type {
 
 // GET /api/reports/campaigns?from=ISO&to=ISO
 export async function GET(req: Request) {
-  const auth = await getSession(req)
+  const auth = await getSession()
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Only Admin and Team Lead can see full reports

@@ -8,7 +8,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await getSession(req)
+  const auth = await getSession()
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body: { name?: string; count?: number } = await req.json()
@@ -37,7 +37,7 @@ export async function DELETE(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await getSession(req)
+  const auth = await getSession()
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   if (auth.role === 'STAFF') {
