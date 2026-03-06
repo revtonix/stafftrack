@@ -37,7 +37,6 @@ function getDateRange(preset: string | null, from: string | null, to: string | n
 export async function GET(req: NextRequest) {
   const session = await getSession()
   if (!session) return unauthorized()
-  if (session.role !== 'ADMIN') return forbidden()
 
   const { searchParams } = new URL(req.url)
   const preset = searchParams.get('preset')
@@ -45,12 +44,29 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get('to')
   const exportCsv = searchParams.get('export') === 'csv'
 
+  const isAdmin = session.role === 'ADMIN'
+  const isTL = session.role === 'TEAM_LEAD_DAY' || session.role === 'TEAM_LEAD_NIGHT'
+  const isStaff = session.role === 'STAFF'
+
   const { start, end } = getDateRange(preset, from, to)
 
+  // Build staff filter based on role
+  let staffFilter: Record<string, unknown> = {}
+  if (isStaff) {
+    staffFilter = { staffId: session.userId }
+  } else if (isTL) {
+    const teamFilter = session.role === 'TEAM_LEAD_DAY' ? 'DAY' : 'NIGHT'
+    const teamStaff = await prisma.user.findMany({
+      where: { profile: { team: teamFilter, isActive: true }, role: 'STAFF' },
+      select: { id: true },
+    })
+    staffFilter = { staffId: { in: teamStaff.map(s => s.id) } }
+  }
+
   const logs = await prisma.hourlyWorkLog.findMany({
-    where: { date: { gte: start, lte: end } },
+    where: { date: { gte: start, lte: end }, ...staffFilter },
     include: {
-      staff: { select: { username: true } },
+      staff: { select: { username: true, profile: { select: { team: true } } } },
       campaign: { select: { name: true, team: true } },
     },
     orderBy: [{ date: 'asc' }, { staff: { username: 'asc' } }],
@@ -88,8 +104,6 @@ export async function GET(req: NextRequest) {
     campTotals[log.campaign.name] = (campTotals[log.campaign.name] || 0) + log.formsCount
   }
 
-  // --- Enhanced analytics ---
-
   // Hourly breakdown (forms per hour index, split by team)
   const hourlyBreakdown: { hour: number; dayForms: number; nightForms: number; total: number; staffCount: number }[] = []
   for (let h = 1; h <= 12; h++) {
@@ -107,7 +121,6 @@ export async function GET(req: NextRequest) {
   const dayActiveStaff = new Set(logs.filter(l => l.campaign.team === 'DAY').map(l => l.staff.username)).size
   const nightActiveStaff = new Set(logs.filter(l => l.campaign.team === 'NIGHT').map(l => l.staff.username)).size
 
-  // Team productivity scores
   const dayScore = dayActiveStaff > 0
     ? Math.round(Math.min(((dayForms / totalHours) / (dayActiveStaff * 5)) * 100, 100))
     : 0

@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   return ok(logs)
 }
 
-// POST: upsert a work log entry
+// POST: upsert a work log entry (supports autosave)
 export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return unauthorized()
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       include: { campaign: { select: { id: true, name: true } } },
     })
 
-    return ok(log)
+    return ok({ ...log, autoSaved: true })
   } catch {
     return err('Failed to process work log', 500)
   }
