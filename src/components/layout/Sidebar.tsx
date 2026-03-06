@@ -40,71 +40,217 @@ export default function Sidebar({ role }: { role: Role }) {
 
   const NavContent = () => (
     <div className="flex flex-col h-full" style={{ position: 'relative' }}>
-      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:'1px', pointerEvents:'none', background:'linear-gradient(to bottom,transparent,rgba(109,40,217,0.45),rgba(0,212,255,0.2),transparent)' }} />
+      {/* Right edge glow line */}
+      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:'1px', pointerEvents:'none', background:'linear-gradient(to bottom,transparent,rgba(109,40,217,0.35),rgba(0,212,255,0.15),transparent)' }} />
 
       {/* Logo */}
-      <div style={{ padding:'20px 20px 18px', borderBottom:'1px solid rgba(109,40,217,0.13)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <div style={{ width:36, height:36, borderRadius:10, flexShrink:0, background:'linear-gradient(135deg,#5b21b6,#7c3aed)', boxShadow:'0 0 20px rgba(109,40,217,0.55),0 0 40px rgba(0,212,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Syne,system-ui', fontWeight:800, fontSize:16, color:'#fff' }}>S</div>
+      <div className="px-5 pt-5 pb-4" style={{ borderBottom:'1px solid rgba(109,40,217,0.1)' }}>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg,#5b21b6,#7c3aed)',
+              boxShadow: '0 0 20px rgba(109,40,217,0.45), 0 0 40px rgba(0,212,255,0.08)',
+              fontFamily: 'Syne, system-ui',
+              fontWeight: 800,
+              fontSize: 15,
+              color: '#fff',
+            }}
+          >
+            S
+          </div>
           <div>
-            <div style={{ fontFamily:'Syne,system-ui', fontWeight:700, fontSize:14, color:'#fff', letterSpacing:'-0.02em' }}>StaffTrack</div>
-            <div style={{ fontFamily:'DM Mono,monospace', fontSize:9, color:'#00d4ff', letterSpacing:'0.15em', textTransform:'uppercase', marginTop:2 }}>Pro Edition</div>
+            <div style={{ fontFamily:'Syne, system-ui', fontWeight:700, fontSize:14, color:'#fff', letterSpacing:'-0.02em' }}>
+              StaffTrack
+            </div>
+            <div style={{ fontFamily:'DM Mono, monospace', fontSize:9, color:'#00d4ff', letterSpacing:'0.15em', textTransform:'uppercase', marginTop:1 }}>
+              Pro Edition
+            </div>
           </div>
         </div>
       </div>
 
       {/* User chip */}
-      <div style={{ margin:'12px 10px 4px', padding:'10px 12px', borderRadius:10, background:'linear-gradient(135deg,rgba(109,40,217,0.09),rgba(0,212,255,0.03))', border:'1px solid rgba(109,40,217,0.18)' }}>
-        <div style={{ fontSize:11, fontWeight:700, color:'#fff', letterSpacing:'0.04em' }}>ADMIN</div>
-        <div style={{ fontFamily:'DM Mono,monospace', fontSize:9, color:'rgba(255,255,255,0.28)', marginTop:3 }}>
-          {new Date().toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' })}
-        </div>
-        <div style={{ display:'inline-flex', marginTop:7, padding:'2px 9px', borderRadius:20, background:rb.bg, border:`1px solid ${rb.border}`, color:rb.color, fontFamily:'DM Mono,monospace', fontSize:9, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase' }}>
-          {role.replace(/_/g,' ')}
+      <div className="mx-3 mt-3 mb-1">
+        <div
+          className="rounded-xl px-3.5 py-3"
+          style={{
+            background: 'linear-gradient(135deg, rgba(109,40,217,0.07), rgba(0,212,255,0.02))',
+            border: '1px solid rgba(109,40,217,0.12)',
+          }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-white tracking-wide">
+              {role.replace(/_/g,' ')}
+            </span>
+            <span
+              className="inline-flex px-2 py-0.5 rounded-md text-[9px] font-bold uppercase"
+              style={{
+                background: rb.bg,
+                border: `1px solid ${rb.border}`,
+                color: rb.color,
+                fontFamily: 'DM Mono, monospace',
+                letterSpacing: '0.08em',
+              }}
+            >
+              {role === 'ADMIN' ? 'Admin' : role.includes('TEAM') ? 'TL' : 'Staff'}
+            </span>
+          </div>
+          <div style={{ fontFamily:'DM Mono, monospace', fontSize:9, color:'rgba(255,255,255,0.22)' }}>
+            {new Date().toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' })}
+          </div>
         </div>
       </div>
 
-      <div style={{ padding:'10px 20px 4px', fontFamily:'DM Mono,monospace', fontSize:8, letterSpacing:'0.2em', color:'rgba(255,255,255,0.14)', textTransform:'uppercase' }}>Navigation</div>
+      {/* Nav label */}
+      <div
+        className="px-5 pt-4 pb-2"
+        style={{ fontFamily:'DM Mono, monospace', fontSize:8, letterSpacing:'0.2em', color:'rgba(255,255,255,0.12)', textTransform:'uppercase' }}
+      >
+        Navigation
+      </div>
 
-      <nav style={{ flex:1, padding:'4px 8px', overflowY:'auto' }}>
+      {/* Nav items */}
+      <nav className="flex-1 px-2.5 overflow-y-auto pb-2">
         {visibleItems.map(item => {
           const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
           return (
-            <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}
-              style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, marginBottom:2, fontSize:13, fontWeight:600, position:'relative', overflow:'hidden', textDecoration:'none', transition:'all 0.15s', ...(active ? { background:'linear-gradient(135deg,rgba(109,40,217,0.2),rgba(0,212,255,0.05))', border:'1px solid rgba(109,40,217,0.28)', color:'#fff' } : { background:'transparent', border:'1px solid transparent', color:'rgba(255,255,255,0.38)' }) }}
-              onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.72)'; } }}
-              onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background='transparent'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.38)'; } }}
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileOpen(false)}
+              className="relative flex items-center gap-2.5 rounded-xl mb-0.5 overflow-hidden no-underline transition-all duration-150"
+              style={{
+                padding: '10px 14px',
+                fontSize: 13,
+                fontWeight: 600,
+                ...(active
+                  ? {
+                      background: 'linear-gradient(135deg, rgba(109,40,217,0.15), rgba(0,212,255,0.04))',
+                      border: '1px solid rgba(109,40,217,0.22)',
+                      color: '#fff',
+                      boxShadow: '0 2px 12px rgba(109,40,217,0.1)',
+                    }
+                  : {
+                      background: 'transparent',
+                      border: '1px solid transparent',
+                      color: 'rgba(255,255,255,0.35)',
+                    }
+                ),
+              }}
+              onMouseEnter={e => {
+                if (!active) {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.background = 'rgba(255,255,255,0.035)'
+                  el.style.color = 'rgba(255,255,255,0.7)'
+                  el.style.borderColor = 'rgba(255,255,255,0.05)'
+                }
+              }}
+              onMouseLeave={e => {
+                if (!active) {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.background = 'transparent'
+                  el.style.color = 'rgba(255,255,255,0.35)'
+                  el.style.borderColor = 'transparent'
+                }
+              }}
             >
-              {active && <div style={{ position:'absolute', left:0, top:'22%', bottom:'22%', width:3, background:'linear-gradient(to bottom,#7c3aed,#00d4ff)', borderRadius:'0 3px 3px 0' }} />}
-              <span style={{ opacity:active?1:0.55, color:active?'#a78bfa':'currentColor' }}>{item.icon}</span>
+              {/* Active accent bar */}
+              {active && (
+                <div
+                  className="absolute left-0 top-[20%] bottom-[20%] w-[3px] rounded-r-full"
+                  style={{
+                    background: 'linear-gradient(to bottom, #7c3aed, #00d4ff)',
+                  }}
+                />
+              )}
+
+              <span style={{ opacity: active ? 1 : 0.5, color: active ? '#a78bfa' : 'currentColor' }}>
+                {item.icon}
+              </span>
               {item.label}
-              {active && <div style={{ marginLeft:'auto', width:6, height:6, borderRadius:'50%', background:'#00d4ff', boxShadow:'0 0 8px #00d4ff', animation:'pulseSoft 2s infinite' }} />}
+
+              {active && (
+                <div className="ml-auto flex items-center gap-1.5">
+                  <div
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{
+                      background: '#00d4ff',
+                      boxShadow: '0 0 6px #00d4ff',
+                      animation: 'pulseSoft 2s infinite',
+                    }}
+                  />
+                </div>
+              )}
             </Link>
           )
         })}
       </nav>
 
-      <div style={{ padding:'12px 16px', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{ fontFamily:'DM Mono,monospace', fontSize:9, color:'rgba(109,40,217,0.45)', letterSpacing:'0.15em', textTransform:'uppercase' }}>Shift · 07:00 IST</div>
-        <div style={{ fontFamily:'DM Mono,monospace', fontSize:9, color:'rgba(255,255,255,0.12)', marginTop:3 }}>Role: {role.replace(/_/g,' ')}</div>
+      {/* Footer */}
+      <div
+        className="px-4 py-3"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}
+      >
+        <div className="flex items-center gap-2">
+          <div
+            className="w-1.5 h-1.5 rounded-full"
+            style={{
+              background: '#00ff94',
+              boxShadow: '0 0 6px rgba(0,255,148,0.5)',
+            }}
+          />
+          <span style={{ fontFamily:'DM Mono, monospace', fontSize:9, color:'rgba(109,40,217,0.4)', letterSpacing:'0.12em', textTransform:'uppercase' }}>
+            Shift · 07:00 IST
+          </span>
+        </div>
       </div>
     </div>
   )
 
   return (
     <>
-      <aside style={{ display:'none', flexDirection:'column', width:240, flexShrink:0, background:'rgba(4,5,10,0.82)', borderRight:'1px solid rgba(109,40,217,0.12)', backdropFilter:'blur(24px)', minHeight:'100vh', position:'sticky', top:0, height:'100vh' }} className="lg:flex">
+      {/* Desktop sidebar */}
+      <aside
+        className="hidden lg:flex flex-col flex-shrink-0 sticky top-0 h-screen"
+        style={{
+          width: 248,
+          background: 'rgba(4,5,10,0.85)',
+          borderRight: '1px solid rgba(109,40,217,0.1)',
+          backdropFilter: 'blur(24px)',
+        }}
+      >
         <NavContent />
       </aside>
-      <button className="lg:hidden fixed bottom-4 right-4 z-50 w-12 h-12 rounded-full flex items-center justify-center" style={{ background:'linear-gradient(135deg,#5b21b6,#7c3aed)', boxShadow:'0 4px 20px rgba(109,40,217,0.5)' }} onClick={() => setMobileOpen(!mobileOpen)}>
+
+      {/* Mobile toggle */}
+      <button
+        className="lg:hidden fixed bottom-4 right-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
+        style={{
+          background: 'linear-gradient(135deg,#5b21b6,#7c3aed)',
+          boxShadow: '0 4px 20px rgba(109,40,217,0.5)',
+        }}
+        onClick={() => setMobileOpen(!mobileOpen)}
+      >
         <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          {mobileOpen ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/> : <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/>}
+          {mobileOpen
+            ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            : <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+          }
         </svg>
       </button>
+
+      {/* Mobile overlay */}
       {mobileOpen && (
         <>
           <div className="lg:hidden fixed inset-0 bg-black/70 z-40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <aside className="lg:hidden fixed left-0 top-0 bottom-0 w-72 z-50 overflow-hidden flex flex-col" style={{ background:'rgba(4,5,10,0.96)', borderRight:'1px solid rgba(109,40,217,0.2)' }}>
+          <aside
+            className="lg:hidden fixed left-0 top-0 bottom-0 w-72 z-50 overflow-hidden flex flex-col"
+            style={{
+              background: 'rgba(4,5,10,0.96)',
+              borderRight: '1px solid rgba(109,40,217,0.18)',
+            }}
+          >
             <NavContent />
           </aside>
         </>
