@@ -103,7 +103,7 @@ model HourlyWorkLog {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@unique([staffId, date, hourIndex])
+  @@unique([staffId, date, hourIndex, campaignId])
   @@index([staffId, date])
   @@index([campaignId, date])
 }
