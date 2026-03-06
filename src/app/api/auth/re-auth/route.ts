@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   }
 
   // 2. TEAM_LEAD blocked — they can never view salary
-  if (auth.role === 'TEAM_LEAD') {
+  if (auth.role === 'TEAM_LEAD_DAY' || auth.role === 'TEAM_LEAD_NIGHT') {
     return NextResponse.json({ ok: false, error: 'Access denied' }, { status: 403 })
   }
 
