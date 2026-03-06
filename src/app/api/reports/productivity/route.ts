@@ -88,5 +88,57 @@ export async function GET(req: NextRequest) {
     campTotals[log.campaign.name] = (campTotals[log.campaign.name] || 0) + log.formsCount
   }
 
-  return ok({ staffTotals, campTotals, totalForms: logs.reduce((a, l) => a + l.formsCount, 0) })
+  // --- Enhanced analytics ---
+
+  // Hourly breakdown (forms per hour index, split by team)
+  const hourlyBreakdown: { hour: number; dayForms: number; nightForms: number; total: number; staffCount: number }[] = []
+  for (let h = 1; h <= 12; h++) {
+    const hourLogs = logs.filter(l => l.hourIndex === h)
+    const dayForms = hourLogs.filter(l => l.campaign.team === 'DAY').reduce((a, l) => a + l.formsCount, 0)
+    const nightForms = hourLogs.filter(l => l.campaign.team === 'NIGHT').reduce((a, l) => a + l.formsCount, 0)
+    const uniqueStaff = new Set(hourLogs.map(l => l.staff.username))
+    hourlyBreakdown.push({ hour: h, dayForms, nightForms, total: dayForms + nightForms, staffCount: uniqueStaff.size })
+  }
+
+  // Team totals
+  const dayForms = logs.filter(l => l.campaign.team === 'DAY').reduce((a, l) => a + l.formsCount, 0)
+  const nightForms = logs.filter(l => l.campaign.team === 'NIGHT').reduce((a, l) => a + l.formsCount, 0)
+  const totalHours = hourlyBreakdown.filter(h => h.total > 0).length || 1
+  const dayActiveStaff = new Set(logs.filter(l => l.campaign.team === 'DAY').map(l => l.staff.username)).size
+  const nightActiveStaff = new Set(logs.filter(l => l.campaign.team === 'NIGHT').map(l => l.staff.username)).size
+
+  // Team productivity scores
+  const dayScore = dayActiveStaff > 0
+    ? Math.round(Math.min(((dayForms / totalHours) / (dayActiveStaff * 5)) * 100, 100))
+    : 0
+  const nightScore = nightActiveStaff > 0
+    ? Math.round(Math.min(((nightForms / totalHours) / (nightActiveStaff * 5)) * 100, 100))
+    : 0
+
+  // Top performer per hour (most recent hour with data)
+  const activeHours = hourlyBreakdown.filter(h => h.total > 0)
+  let topPerformerThisHour: { name: string; forms: number; hour: number } | null = null
+  if (activeHours.length > 0) {
+    const latestHour = activeHours[activeHours.length - 1].hour
+    const latestLogs = logs.filter(l => l.hourIndex === latestHour)
+    const byStaff: Record<string, number> = {}
+    for (const l of latestLogs) {
+      byStaff[l.staff.username] = (byStaff[l.staff.username] || 0) + l.formsCount
+    }
+    const sorted = Object.entries(byStaff).sort((a, b) => b[1] - a[1])
+    if (sorted.length > 0) {
+      topPerformerThisHour = { name: sorted[0][0], forms: sorted[0][1], hour: latestHour }
+    }
+  }
+
+  return ok({
+    staffTotals,
+    campTotals,
+    totalForms: logs.reduce((a, l) => a + l.formsCount, 0),
+    hourlyBreakdown,
+    teamStats: {
+      dayForms, nightForms, dayActiveStaff, nightActiveStaff, dayScore, nightScore,
+    },
+    topPerformerThisHour,
+  })
 }
