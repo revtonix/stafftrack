@@ -52,25 +52,30 @@ export async function GET(req: NextRequest) {
     orderBy: { username: 'asc' },
   })
 
-  const results = []
-  for (const staff of staffList) {
-    if (!staff.profile) continue
+  const staffIds = staffList.filter(s => s.profile).map(s => s.id)
 
-    // Count distinct attendance days
-    const attendanceDays = await prisma.attendance.count({
-      where: { staffId: staff.id, date: { gte: start, lte: end }, checkIn: { not: null } },
+  // Batch query: count attendance days for all staff in one query
+  const attendanceCounts = await prisma.attendance.groupBy({
+    by: ['staffId'],
+    where: { staffId: { in: staffIds }, date: { gte: start, lte: end }, checkIn: { not: null } },
+    _count: { staffId: true },
+  })
+
+  const attendanceMap = new Map(attendanceCounts.map(a => [a.staffId, a._count.staffId]))
+
+  const results = staffList
+    .filter(staff => staff.profile)
+    .map(staff => {
+      const attendanceDays = attendanceMap.get(staff.id) || 0
+      const salary = calculateSalary(staff.profile!.monthlySalary, attendanceDays)
+      return {
+        id: staff.id,
+        name: staff.username,
+        team: staff.profile!.team,
+        monthlySalary: staff.profile!.monthlySalary,
+        ...salary,
+      }
     })
-
-    const salary = calculateSalary(staff.profile.monthlySalary, attendanceDays)
-
-    results.push({
-      id: staff.id,
-      name: staff.username,
-      team: staff.profile.team,
-      monthlySalary: staff.profile.monthlySalary,
-      ...salary,
-    })
-  }
 
   if (exportCsv) {
     const header = 'Staff,Team,Present Days,Extra Days,Base Salary,Extra Pay,Total Salary\n'

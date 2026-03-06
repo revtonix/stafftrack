@@ -11,6 +11,7 @@ export default function AttendancePage() {
     fetch('/api/attendance')
       .then(r => r.json())
       .then(d => { if (d.success) setRecords(d.data); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [])
 
   function calcHours(checkIn: string | null, checkOut: string | null) {

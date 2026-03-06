@@ -41,25 +41,29 @@ export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return unauthorized()
 
-  const body = await req.json()
-  const parsed = WorkLogSchema.safeParse(body)
-  if (!parsed.success) return err(parsed.error.errors[0]?.message || 'Invalid input')
+  try {
+    const body = await req.json()
+    const parsed = WorkLogSchema.safeParse(body)
+    if (!parsed.success) return err(parsed.error.errors[0]?.message || 'Invalid input')
 
-  const { campaignId, date, hourIndex, formsCount, note } = parsed.data
+    const { campaignId, date, hourIndex, formsCount, note } = parsed.data
 
-  // Verify campaign exists
-  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } })
-  if (!campaign) return err('Campaign not found')
-  if (!campaign.isActive) return err('Campaign is inactive')
+    // Verify campaign exists
+    const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } })
+    if (!campaign) return err('Campaign not found')
+    if (!campaign.isActive) return err('Campaign is inactive')
 
-  const dateObj = new Date(date)
+    const dateObj = new Date(date)
 
-  const log = await prisma.hourlyWorkLog.upsert({
-    where: { staffId_date_hourIndex: { staffId: session.userId, date: dateObj, hourIndex } },
-    update: { campaignId, formsCount, note: note || null },
-    create: { staffId: session.userId, campaignId, date: dateObj, hourIndex, formsCount, note: note || null },
-    include: { campaign: { select: { id: true, name: true } } },
-  })
+    const log = await prisma.hourlyWorkLog.upsert({
+      where: { staffId_date_hourIndex: { staffId: session.userId, date: dateObj, hourIndex } },
+      update: { campaignId, formsCount, note: note || null },
+      create: { staffId: session.userId, campaignId, date: dateObj, hourIndex, formsCount, note: note || null },
+      include: { campaign: { select: { id: true, name: true } } },
+    })
 
-  return ok(log)
+    return ok(log)
+  } catch {
+    return err('Failed to process work log', 500)
+  }
 }

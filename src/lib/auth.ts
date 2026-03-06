@@ -4,9 +4,11 @@ import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 import { Role } from '@prisma/client'
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback-secret-change-in-production-32+'
-)
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required. Set it in your .env file.')
+}
+
+const SECRET = new TextEncoder().encode(process.env.JWT_SECRET)
 const COOKIE_NAME = 'stafftrack_token'
 
 export interface JWTPayload {

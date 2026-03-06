@@ -15,6 +15,7 @@ export default function ProductivityPage() {
     fetch(`/api/worklogs?from=${from}&to=${to}`)
       .then(r => r.json())
       .then(d => { if (d.success) setLogs(d.data); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [from, to])
 
   // Group by date
