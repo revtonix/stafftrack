@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { ok, err, unauthorized } from '@/lib/api'
 import { prisma } from '@/lib/prisma'
-import { getTodayDate } from '@/lib/salary'
+import { getShiftDate } from '@/lib/shiftDay'
 
 // GET: fetch attendance for current user (or staffId if admin)
 export async function GET(req: NextRequest) {
@@ -34,44 +34,45 @@ export async function GET(req: NextRequest) {
   return ok(records)
 }
 
-// POST: check in
+// POST: check in — uses shift-day logic (7AM IST cutoff)
 export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return unauthorized()
 
-  const today = getTodayDate()
+  // Use shift date: if before 7 AM IST, counts as previous day
+  const shiftDate = getShiftDate()
 
   const existing = await prisma.attendance.findUnique({
-    where: { staffId_date: { staffId: session.userId, date: today } },
+    where: { staffId_date: { staffId: session.userId, date: shiftDate } },
   })
 
-  if (existing?.checkIn) return err('Already checked in today')
+  if (existing?.checkIn) return err('Already checked in for this shift')
 
   const record = await prisma.attendance.upsert({
-    where: { staffId_date: { staffId: session.userId, date: today } },
+    where: { staffId_date: { staffId: session.userId, date: shiftDate } },
     update: { checkIn: new Date() },
-    create: { staffId: session.userId, date: today, checkIn: new Date() },
+    create: { staffId: session.userId, date: shiftDate, checkIn: new Date() },
   })
 
   return ok(record)
 }
 
-// PATCH: check out
+// PATCH: check out — uses shift-day logic
 export async function PATCH(req: NextRequest) {
   const session = await getSession()
   if (!session) return unauthorized()
 
-  const today = getTodayDate()
+  const shiftDate = getShiftDate()
 
   const existing = await prisma.attendance.findUnique({
-    where: { staffId_date: { staffId: session.userId, date: today } },
+    where: { staffId_date: { staffId: session.userId, date: shiftDate } },
   })
 
-  if (!existing?.checkIn) return err('You have not checked in today')
-  if (existing.checkOut) return err('Already checked out today')
+  if (!existing?.checkIn) return err('You have not checked in for this shift')
+  if (existing.checkOut) return err('Already checked out for this shift')
 
   const record = await prisma.attendance.update({
-    where: { staffId_date: { staffId: session.userId, date: today } },
+    where: { staffId_date: { staffId: session.userId, date: shiftDate } },
     data: { checkOut: new Date() },
   })
 

@@ -2,6 +2,7 @@
 // src/components/dashboard/AdminDashboard.tsx
 import { useState, useEffect, useCallback } from 'react'
 import { formatCurrency } from '@/lib/salary'
+import { getCurrentShift, getShiftLabel, getISTTimeString, getISTDateLabel, getShiftDateStr } from '@/lib/shiftDay'
 import type { JWTPayload } from '@/lib/auth'
 
 interface StaffSummary {
@@ -102,7 +103,10 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
     thisMonth: 'This Month', '6months': 'Last 6 Months',
   }
 
-  const shiftInfo = `Shift: ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })} IST`
+  const shiftType = getCurrentShift(now)
+  const shiftLabel = getShiftLabel(now)
+  const istTime = getISTTimeString(now)
+  const shiftDateLabel = getISTDateLabel(now)
 
   return (
     <div className="space-y-6">
@@ -113,7 +117,10 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
             <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
             <span className="badge-red text-[10px] uppercase tracking-wider">Administrator</span>
           </div>
-          <p className="text-slate-500 text-sm">{shiftInfo} &middot; Live data refreshes every 10s</p>
+          <p className="text-slate-500 text-sm">
+            <span className={shiftType === 'MORNING' ? 'text-yellow-400' : 'text-purple-400'}>{shiftLabel}</span>
+            {' '}&middot; {shiftDateLabel} &middot; Live data refreshes every 10s
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <select
@@ -124,9 +131,9 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
             {Object.entries(presetLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
           <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-800/60 px-3 py-2 rounded-xl border border-slate-700/50">
-            <span className="tabular-nums font-mono text-white">
-              {now.toLocaleTimeString('en-IN', { hour12: false })}
-            </span>
+            <span className={`w-1.5 h-1.5 rounded-full ${shiftType === 'MORNING' ? 'bg-yellow-400' : 'bg-purple-400'}`} />
+            <span className="tabular-nums font-mono text-white">{istTime}</span>
+            <span className="text-slate-600">IST</span>
           </div>
         </div>
       </div>

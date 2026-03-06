@@ -1,11 +1,18 @@
 'use client'
 // src/components/dashboard/TeamLeadDashboard.tsx
 import { useState, useEffect } from 'react'
+import { getCurrentShift, getShiftLabel, getISTTimeString, getISTDateLabel } from '@/lib/shiftDay'
 import type { JWTPayload } from '@/lib/auth'
 
 export default function TeamLeadDashboard({ session }: { session: JWTPayload }) {
   const [productivity, setProductivity] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [now, setNow] = useState(new Date())
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
 
   useEffect(() => {
     fetch('/api/reports/productivity?preset=today')
@@ -14,12 +21,18 @@ export default function TeamLeadDashboard({ session }: { session: JWTPayload }) 
   }, [])
 
   const teamLabel = session.role === 'TEAM_LEAD_DAY' ? 'Day Team' : 'Night Team'
+  const shiftType = getCurrentShift(now)
+  const shiftLabel = getShiftLabel(now)
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">{teamLabel} — Lead Dashboard</h1>
-        <p className="text-slate-400 text-sm mt-1">Today's team performance overview</p>
+        <p className="text-slate-400 text-sm mt-1">
+          {getISTDateLabel(now)} &middot;{' '}
+          <span className={shiftType === 'MORNING' ? 'text-yellow-400' : 'text-purple-400'}>{shiftLabel}</span>
+          {' '}&middot; <span className="font-mono text-white">{getISTTimeString(now)}</span> IST
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

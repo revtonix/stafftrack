@@ -34,8 +34,9 @@ export function getMonthRange(year: number, month: number) {
 }
 
 export function getTodayDate(): Date {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  // Use shift-day logic: before 7 AM IST = previous day
+  const { getShiftDate } = require('@/lib/shiftDay')
+  return getShiftDate()
 }
 
 export function formatCurrency(amount: number): string {
@@ -54,7 +55,7 @@ export function formatDate(date: Date | string): string {
 export function formatTime(date: Date | string | null): string {
   if (!date) return '—'
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
 }
 
 export function getAttendanceHours(checkIn: Date | null, checkOut: Date | null): number {
