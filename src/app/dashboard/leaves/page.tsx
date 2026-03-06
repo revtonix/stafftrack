@@ -1,8 +1,6 @@
 'use client'
 // src/app/dashboard/leaves/page.tsx
 import { useState, useEffect } from 'react'
-import { getSession } from '@/lib/auth'
-
 export default function LeavesPage() {
   const [leaves, setLeaves] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -14,15 +12,19 @@ export default function LeavesPage() {
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
       if (d.success) setIsAdmin(d.data.role === 'ADMIN')
-    })
+    }).catch(() => {})
     fetchLeaves()
   }, [])
 
   async function fetchLeaves() {
     setLoading(true)
-    const res = await fetch('/api/leaves')
-    const d = await res.json()
-    if (d.success) setLeaves(d.data)
+    try {
+      const res = await fetch('/api/leaves')
+      const d = await res.json()
+      if (d.success) setLeaves(d.data)
+    } catch {
+      setMsg('Failed to load leaves')
+    }
     setLoading(false)
   }
 
