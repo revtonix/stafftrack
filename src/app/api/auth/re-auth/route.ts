@@ -6,12 +6,12 @@
 import { NextResponse } from 'next/server'
 import { cookies }      from 'next/headers'
 import { prisma }       from '@/lib/prisma'
-import { verifyAuth }   from '@/lib/auth'
+import { getSession }   from '@/lib/auth'
 import bcrypt           from 'bcryptjs'
 
 export async function POST(req: Request) {
   // 1. Must be authenticated
-  const auth = await verifyAuth(req)
+  const auth = await getSession(req)
   if (!auth) {
     return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 })
   }
