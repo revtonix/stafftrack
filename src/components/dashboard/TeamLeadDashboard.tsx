@@ -13,6 +13,9 @@ interface AttendanceEntry {
 }
 interface StaffForm { name: string; team: string; total: number; campaigns: Record<string, number> }
 interface CampaignPerf { name: string; team: string; totalForms: number; staffCount: number }
+interface ActivityEvent {
+  id: string; time: string; staffName: string; team: string; event: string; detail?: string
+}
 interface DashData {
   totalPresent: number; activeNow: number
   dayShiftActive: number; nightShiftActive: number
@@ -21,6 +24,7 @@ interface DashData {
   attendance: AttendanceEntry[]
   staffForms: StaffForm[]
   campaignPerformance: CampaignPerf[]
+  activityTimeline?: ActivityEvent[]
 }
 
 export default function TeamLeadDashboard({ session }: { session: JWTPayload }) {
@@ -89,7 +93,7 @@ export default function TeamLeadDashboard({ session }: { session: JWTPayload }) 
         </div>
       </div>
 
-      {/* Live Active Staff Counter */}
+      {/* Live Active Staff Counter - only shows own team */}
       <div className="card-glow p-6">
         <div className="flex items-center gap-3 mb-4">
           <span className={`w-3 h-3 rounded-full ${teamDotColor} animate-pulse-soft`} />
@@ -111,7 +115,7 @@ export default function TeamLeadDashboard({ session }: { session: JWTPayload }) 
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats - NO salary data for TL */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
           <div className="text-xs text-slate-500 uppercase tracking-wide">Team Forms Today</div>
@@ -138,6 +142,32 @@ export default function TeamLeadDashboard({ session }: { session: JWTPayload }) 
           <div className="text-xs text-slate-500">Today</div>
         </div>
       </div>
+
+      {/* Real-time Staff Activity Timeline */}
+      {data?.activityTimeline && data.activityTimeline.length > 0 && (
+        <div className="card">
+          <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${teamDotColor} animate-pulse-soft`} />
+              <h2 className="font-semibold text-white">Real-time Staff Activity</h2>
+            </div>
+            <span className="text-xs text-slate-500">{data.activityTimeline.length} events</span>
+          </div>
+          <div className="p-4 space-y-2 max-h-64 overflow-y-auto">
+            {data.activityTimeline.map((evt) => (
+              <div key={evt.id} className="flex items-center gap-3 bg-slate-800/30 rounded-lg px-4 py-2.5 border border-slate-700/30">
+                <div className="text-xs text-slate-500 font-mono w-16 flex-shrink-0">{evt.time}</div>
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${evt.team === 'DAY' ? 'bg-yellow-400' : 'bg-purple-400'}`} />
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium text-white text-sm">{evt.staffName}</span>
+                  <span className="text-slate-400 text-sm"> {evt.event}</span>
+                  {evt.detail && <span className="text-slate-500 text-xs ml-1">({evt.detail})</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Team Attendance Details */}
       <div className="card">
@@ -187,6 +217,35 @@ export default function TeamLeadDashboard({ session }: { session: JWTPayload }) 
         </div>
       </div>
 
+      {/* Overall Campaign Report - above staff list */}
+      {data?.campaignPerformance && data.campaignPerformance.length > 0 && (
+        <div className="card">
+          <div className="px-6 py-4 border-b border-slate-800">
+            <h2 className="font-semibold text-white">Overall Campaign Report</h2>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Campaign</th>
+                  <th>Total Forms</th>
+                  <th>Staff Working</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.campaignPerformance.map(c => (
+                  <tr key={c.name}>
+                    <td className="font-semibold text-white">{c.name}</td>
+                    <td className="font-bold text-brand-400">{c.totalForms}</td>
+                    <td className="text-slate-300">{c.staffCount} staff</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Staff Performance */}
       {data?.staffForms && data.staffForms.length > 0 && (
         <div className="card">
@@ -229,35 +288,6 @@ export default function TeamLeadDashboard({ session }: { session: JWTPayload }) 
                     </tr>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Campaign Performance */}
-      {data?.campaignPerformance && data.campaignPerformance.length > 0 && (
-        <div className="card">
-          <div className="px-6 py-4 border-b border-slate-800">
-            <h2 className="font-semibold text-white">Campaign Performance</h2>
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Campaign</th>
-                  <th>Total Forms</th>
-                  <th>Staff Working</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.campaignPerformance.map(c => (
-                  <tr key={c.name}>
-                    <td className="font-semibold text-white">{c.name}</td>
-                    <td className="font-bold text-brand-400">{c.totalForms}</td>
-                    <td className="text-slate-300">{c.staffCount} staff</td>
-                  </tr>
-                ))}
               </tbody>
             </table>
           </div>

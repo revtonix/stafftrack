@@ -13,13 +13,13 @@ const PRESETS = [
 ]
 
 export default function ReportsPage() {
-  const [preset, setPreset] = useState('thisMonth')
+  const [preset, setPreset] = useState('today')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [payroll, setPayroll] = useState<any[]>([])
   const [productivity, setProductivity] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const [tab, setTab] = useState<'payroll' | 'productivity'>('payroll')
+  const [tab, setTab] = useState<'staffSalary' | 'performance'>('performance')
 
   function buildQuery() {
     if (preset === 'custom') return `from=${from}&to=${to}`
@@ -44,7 +44,7 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Reports</h1>
-        <p className="text-slate-400 text-sm mt-1">Payroll and productivity reports with CSV export</p>
+        <p className="text-slate-400 text-sm mt-1">Staff salary and performance reports with CSV export</p>
       </div>
 
       {/* Filters */}
@@ -71,10 +71,10 @@ export default function ReportsPage() {
           )}
           <div className="flex gap-2 ml-auto">
             <a href={`/api/reports/payroll?${buildQuery()}&export=csv`} className="btn-secondary btn-sm" target="_blank">
-              ↓ Payroll CSV
+              ↓ Staff Salary CSV
             </a>
             <a href={`/api/reports/productivity?${buildQuery()}&export=csv`} className="btn-secondary btn-sm" target="_blank">
-              ↓ Productivity CSV
+              ↓ Performance CSV
             </a>
           </div>
         </div>
@@ -82,10 +82,13 @@ export default function ReportsPage() {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {(['payroll', 'productivity'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`btn btn-sm capitalize ${tab === t ? 'btn-primary' : 'btn-secondary'}`}>
-            {t}
+        {([
+          { key: 'performance' as const, label: 'Performance' },
+          { key: 'staffSalary' as const, label: 'Staff Salary' },
+        ]).map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`btn btn-sm ${tab === t.key ? 'btn-primary' : 'btn-secondary'}`}>
+            {t.label}
           </button>
         ))}
       </div>
@@ -94,14 +97,14 @@ export default function ReportsPage() {
         <div className="flex items-center justify-center h-32">
           <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : tab === 'payroll' ? (
+      ) : tab === 'staffSalary' ? (
         <div className="card">
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>Staff</th><th>Team</th><th>Present</th>
-                  <th>Extra Days</th><th>Base</th><th>Extra Pay</th><th>Total</th>
+                  <th>Extra Days</th><th>Basic</th><th>Extra Pay</th><th>Total Salary</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,6 +147,24 @@ export default function ReportsPage() {
               <div className="text-3xl font-bold text-white">{Object.keys(productivity.campTotals).length}</div>
             </div>
           </div>
+          {/* Overall Campaign Report - above staff list */}
+          <div className="card">
+            <div className="px-6 py-4 border-b border-slate-800"><h3 className="font-semibold text-white">Overall Campaign Report</h3></div>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Campaign</th><th>Total Forms</th></tr></thead>
+                <tbody>
+                  {Object.entries(productivity.campTotals).sort(([,a],[,b]) => (b as number)-(a as number)).map(([name, total]) => (
+                    <tr key={name}>
+                      <td className="text-slate-300">{name}</td>
+                      <td className="font-bold text-brand-400">{total as number}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {/* Staff performance list */}
           <div className="card">
             <div className="table-wrap">
               <table>
@@ -153,22 +174,6 @@ export default function ReportsPage() {
                     <tr key={s.name}>
                       <td className="font-semibold text-white">{s.name}</td>
                       <td className="font-bold text-brand-400">{s.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div className="card">
-            <div className="px-6 py-4 border-b border-slate-800"><h3 className="font-semibold text-white">By Campaign</h3></div>
-            <div className="table-wrap">
-              <table>
-                <thead><tr><th>Campaign</th><th>Total Forms</th></tr></thead>
-                <tbody>
-                  {Object.entries(productivity.campTotals).sort(([,a],[,b]) => (b as number)-(a as number)).map(([name, total]) => (
-                    <tr key={name}>
-                      <td className="text-slate-300">{name}</td>
-                      <td className="font-bold text-brand-400">{total as number}</td>
                     </tr>
                   ))}
                 </tbody>
