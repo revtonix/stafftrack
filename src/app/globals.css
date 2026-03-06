@@ -2,6 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Glow orb backgrounds - outside @layer for pseudo-element support */
+.glow-bg {
+  position: relative;
+}
+.glow-bg::before,
+.glow-bg::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+.glow-bg::before {
+  top: -100px;
+  left: -60px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0.06), transparent 70%);
+  filter: blur(80px);
+}
+.glow-bg::after {
+  bottom: -100px;
+  right: -60px;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.15), rgba(168, 85, 247, 0.05), transparent 70%);
+  filter: blur(80px);
+}
+
+/* Grid pattern overlay */
+.grid-pattern {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Stat card corner glow */
+.stat-card-glow::after {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.1), transparent);
+  pointer-events: none;
+  border-radius: 50%;
+}
+
 @layer base {
   * { box-sizing: border-box; }
   :root { color-scheme: dark; }
@@ -13,40 +63,6 @@
 }
 
 @layer components {
-  /* Glow orb backgrounds */
-  .glow-bg { position: relative; }
-  .glow-bg::before,
-  .glow-bg::after {
-    content: '';
-    position: fixed;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 0;
-    filter: blur(120px);
-  }
-  .glow-bg::before {
-    top: -10%;
-    left: -5%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05), transparent);
-  }
-  .glow-bg::after {
-    bottom: -10%;
-    right: -5%;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.12), rgba(168, 85, 247, 0.04), transparent);
-  }
-
-  /* Subtle grid pattern */
-  .grid-pattern {
-    background-image:
-      linear-gradient(rgba(148, 163, 184, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
-
   /* Cards with glass effect */
   .card {
     @apply bg-slate-900/80 backdrop-blur-sm border border-slate-800/80 rounded-2xl;
@@ -94,19 +110,9 @@
   .badge-blue { @apply badge bg-blue-500/15 text-blue-400 border border-blue-500/20; }
   .badge-purple { @apply badge bg-purple-500/15 text-purple-400 border border-purple-500/20; }
 
-  /* Stat cards with subtle glow */
+  /* Stat cards */
   .stat-card {
     @apply card p-5 flex flex-col gap-1 relative overflow-hidden;
-  }
-  .stat-card::after {
-    content: '';
-    position: absolute;
-    top: -20px;
-    right: -20px;
-    width: 100px;
-    height: 100px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.08), transparent);
-    pointer-events: none;
   }
 
   /* Tables */

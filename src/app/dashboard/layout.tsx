@@ -10,6 +10,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex h-screen bg-slate-950 overflow-hidden glow-bg">
+      {/* Extra center glow orb */}
+      <div className="fixed top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(99, 102, 241, 0.08), transparent 70%)', filter: 'blur(60px)' }} />
       <Sidebar role={session.role} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
         <TopBar username={session.username} role={session.role} />

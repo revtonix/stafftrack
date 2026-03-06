@@ -133,7 +133,7 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
 
       {/* Top Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="stat-card">
+        <div className="stat-card stat-card-glow">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-lg">👥</span>
             <span className="text-xs text-slate-500 uppercase tracking-wide">Present Today</span>
@@ -141,7 +141,7 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
           <div className="text-3xl font-bold text-white">{totalPresent}/{payroll.length}</div>
           <div className="text-xs text-slate-500">Active staff</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card stat-card-glow">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-lg">💰</span>
             <span className="text-xs text-slate-500 uppercase tracking-wide">Live Salary Today</span>
@@ -149,7 +149,7 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
           <div className="text-3xl font-bold text-emerald-400">{formatCurrency(liveSalaryToday)}</div>
           <div className="text-xs text-slate-500">Auto-refresh 10s</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card stat-card-glow">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-lg">⏳</span>
             <span className="text-xs text-slate-500 uppercase tracking-wide">Pending Approvals</span>
@@ -157,7 +157,7 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
           <div className="text-3xl font-bold text-yellow-400">{pendingLeaves.length}</div>
           <div className="text-xs text-slate-500">Needs review</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card stat-card-glow">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-lg">✅</span>
             <span className="text-xs text-slate-500 uppercase tracking-wide">Approved Today</span>
