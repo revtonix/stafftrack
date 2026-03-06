@@ -61,6 +61,7 @@ model User {
   decidedLeaves LeaveRequest[]  @relation("DecidedLeaves")
   // ── NEW: attendance approvals given by this user
   approvedAttendance Attendance[] @relation("AttendanceApprover")
+  hourEntries   HourEntry[]    @relation("StaffHourEntries")
   auditLogs     AuditLog[]
 
   @@index([usernameLower])
@@ -152,6 +153,35 @@ model LeaveRequest {
 
   @@index([staffId])
   @@index([status])
+}
+
+model HourEntry {
+  id        String   @id @default(cuid())
+  staffId   String
+  staff     User     @relation("StaffHourEntries", fields: [staffId], references: [id], onDelete: Cascade)
+  shiftKey  String
+  hourStart DateTime
+  hourEnd   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaigns CampaignWork[]
+
+  @@unique([staffId, shiftKey, hourStart])
+  @@index([staffId, shiftKey])
+}
+
+model CampaignWork {
+  id            String    @id @default(cuid())
+  hourEntryId   String
+  hourEntry     HourEntry @relation(fields: [hourEntryId], references: [id], onDelete: Cascade)
+  name          String
+  count         Int       @default(0)
+  createdByRole String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([hourEntryId])
 }
 
 model AuditLog {

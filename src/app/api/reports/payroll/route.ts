@@ -8,7 +8,7 @@ import { getSession }            from '@/lib/auth'
 import { canViewSalary }         from '@/lib/salaryGuard'
 
 export async function GET(request: Request) {
-  const auth = await getSession(request)
+  const auth = await getSession()
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)

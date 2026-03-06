@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { HourRow } from '@/components/HourRow'
+import { HourRow } from '@/components/campaigns/HourRow'
 import { getShiftDayRange } from '@/lib/shiftDay'
 import type { HourEntry, UserRole } from '@/types/campaign'
 
@@ -126,7 +126,7 @@ export function HourGrid({ staffId, role }: { staffId: string; role: UserRole })
   }
 
   const totalToday      = entries.flatMap(e => e.campaigns).reduce((s, c) => s + c.count, 0)
-  const activeCampaigns = [...new Set(entries.flatMap(e => e.campaigns.map(c => c.name)))]
+  const activeCampaigns = Array.from(new Set(entries.flatMap(e => e.campaigns.map(c => c.name))))
 
   if (loading) {
     return (

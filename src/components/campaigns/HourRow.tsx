@@ -21,7 +21,7 @@ function CampaignChip({
   onCountChange: (id: string, delta: number)   => Promise<void>
   onDelete:      (id: string)                  => Promise<void>
 }) {
-  const canEdit   = role === 'ADMIN' || role === 'TEAM_LEAD'
+  const canEdit   = role === 'ADMIN' || role === 'TEAM_LEAD_DAY' || role === 'TEAM_LEAD_NIGHT'
   const [editing,  setEditing]  = useState(false)
   const [nameVal,  setNameVal]  = useState(campaign.name)
   const [saving,   setSaving]   = useState(false)

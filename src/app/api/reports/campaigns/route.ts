@@ -33,7 +33,7 @@ export async function GET(req: Request) {
         select: {
           id:       true,
           username: true,
-          staffProfile: {
+          profile: {
             select: { team: true },
           },
         },
@@ -51,16 +51,16 @@ export async function GET(req: Request) {
 
   const report: StaffCampaignReport[] = []
 
-  for (const [staffId, entries] of byStaff) {
-    const allCampaigns   = entries.flatMap(e => e.campaigns)
-    const totalCampaigns = allCampaigns.reduce((s, c) => s + c.count, 0)
+  for (const [staffId, entries] of Array.from(byStaff)) {
+    const allCampaigns   = entries.flatMap((e: any) => e.campaigns)
+    const totalCampaigns = allCampaigns.reduce((s: number, c: any) => s + c.count, 0)
 
     // Build campaign-level breakdown (aggregate counts by name)
     const nameMap = new Map<string, number>()
     for (const c of allCampaigns) {
       nameMap.set(c.name, (nameMap.get(c.name) ?? 0) + c.count)
     }
-    const campaignBreakdown: CampaignBreakdown[] = [...nameMap.entries()]
+    const campaignBreakdown: CampaignBreakdown[] = Array.from(nameMap.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
 
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
     report.push({
       staffId,
       staffName:        staffInfo.username,
-      team:             (staffInfo.staffProfile?.team ?? 'DAY') as 'DAY' | 'NIGHT',
+      team:             (staffInfo.profile?.team ?? 'DAY') as 'DAY' | 'NIGHT',
       totalCampaigns,
       campaignBreakdown,
       hourEntries: entries.map(e => ({
@@ -79,7 +79,7 @@ export async function GET(req: Request) {
         hourStart: e.hourStart.toISOString(),
         hourEnd:   e.hourEnd.toISOString(),
         staffName: staffInfo.username,
-        team:      (staffInfo.staffProfile?.team ?? 'DAY') as 'DAY' | 'NIGHT',
+        team:      (staffInfo.profile?.team ?? 'DAY') as 'DAY' | 'NIGHT',
         totalCount: e.campaigns.reduce((s, c) => s + c.count, 0),
         campaigns:  e.campaigns.map(c => ({
           id:            c.id,
