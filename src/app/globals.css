@@ -135,6 +135,64 @@
     50% { opacity: 0.5; box-shadow: 0 0 4px rgba(16, 185, 129, 0.3); }
   }
 
+  /* Hover glow effect on cards */
+  .hover-card-glow {
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+  }
+  .hover-card-glow:hover {
+    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.08), 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 40px rgba(99, 102, 241, 0.08);
+    transform: translateY(-1px);
+  }
+
+  /* Animated counters pulse */
+  .animated-counter {
+    animation: pulseSoft 2s ease-in-out infinite;
+  }
+  @keyframes pulseSoft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+  }
+
+  /* Live stat pulse */
+  .live-stat {
+    animation: liveStat 3s ease-in-out infinite;
+  }
+  @keyframes liveStat {
+    0%, 100% { text-shadow: 0 0 8px rgba(99, 102, 241, 0.3); }
+    50% { text-shadow: 0 0 16px rgba(99, 102, 241, 0.5); }
+  }
+
+  /* Progress bar glows */
+  .progress-glow-yellow {
+    box-shadow: 0 0 8px rgba(250, 204, 21, 0.3);
+  }
+  .progress-glow-purple {
+    box-shadow: 0 0 8px rgba(192, 132, 252, 0.3);
+  }
+
+  /* Fade in animation */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Slide up animation */
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Soft pulse for indicators */
+  .animate-pulse-soft {
+    animation: pulseSoft 2s ease-in-out infinite;
+  }
+
   /* Status indicators */
   .status-present {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20;

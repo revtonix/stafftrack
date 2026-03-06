@@ -111,6 +111,148 @@ export async function GET(req: NextRequest) {
     if (campPerformance[cId]) campPerformance[cId].staffCount = staffSet.size
   }
 
+  // --- Enhanced Analytics for Admin Dashboard ---
+
+  // Hourly forms breakdown (for live performance graph)
+  const hourlyFormsByTeam: { hour: number; dayForms: number; nightForms: number }[] = []
+  for (let h = 1; h <= 12; h++) {
+    const dayForms = todayLogs.filter(l => l.hourIndex === h && l.staff.profile?.team === 'DAY').reduce((a, l) => a + l.formsCount, 0)
+    const nightForms = todayLogs.filter(l => l.hourIndex === h && l.staff.profile?.team === 'NIGHT').reduce((a, l) => a + l.formsCount, 0)
+    hourlyFormsByTeam.push({ hour: h, dayForms, nightForms })
+  }
+
+  // Idle staff detection: active staff with no recent worklog activity
+  const idleStaff: { name: string; team: string; idleMinutes: number }[] = []
+  for (const a of activeNow) {
+    const staffLogs = todayLogs.filter(l => l.staffId === a.staffId)
+    let lastActivityTime = a.checkIn ? new Date(a.checkIn).getTime() : 0
+    // Find the latest worklog update time (approximate by updatedAt or use checkIn + hourIndex)
+    for (const log of staffLogs) {
+      // Approximate: each hourIndex represents an hour after check-in
+      if (a.checkIn) {
+        const logTime = new Date(a.checkIn).getTime() + log.hourIndex * 3600000
+        if (logTime > lastActivityTime) lastActivityTime = logTime
+      }
+    }
+    const idleMs = Date.now() - lastActivityTime
+    const idleMinutes = Math.floor(idleMs / 60000)
+    if (idleMinutes >= 10) {
+      idleStaff.push({
+        name: a.staff.username,
+        team: a.staff.profile?.team || 'DAY',
+        idleMinutes,
+      })
+    }
+  }
+
+  // AI Productivity Score per staff
+  const productivityScores: { name: string; team: string; score: number; formsPerHour: number; activeHours: number; totalForms: number }[] = []
+  for (const a of todayAttendance) {
+    if (!a.checkIn) continue
+    const hoursWorked = a.checkOut
+      ? (new Date(a.checkOut).getTime() - new Date(a.checkIn).getTime()) / 3600000
+      : (Date.now() - new Date(a.checkIn).getTime()) / 3600000
+    const clampedHours = Math.min(Math.max(hoursWorked, 0.1), 12)
+    const staffTotal = formsByStaff[a.staffId]?.total || 0
+    const formsPerHour = staffTotal / clampedHours
+    // Score: weighted combo of forms/hr (max ~10/hr = 100%), active time ratio (out of 12h shift), idle penalty
+    const fphScore = Math.min(formsPerHour / 8, 1) * 60 // up to 60 points for forms/hr
+    const activeScore = Math.min(clampedHours / 10, 1) * 25 // up to 25 points for active time
+    const idleEntry = idleStaff.find(i => i.name === a.staff.username)
+    const idlePenalty = idleEntry ? Math.min(idleEntry.idleMinutes / 60, 1) * 15 : 0
+    const baseScore = Math.min(staffTotal > 0 ? 15 : 5, 15) // 15 points for having any forms
+    const score = Math.round(Math.min(Math.max(fphScore + activeScore + baseScore - idlePenalty, 0), 100))
+    productivityScores.push({
+      name: a.staff.username,
+      team: a.staff.profile?.team || 'DAY',
+      score,
+      formsPerHour: Math.round(formsPerHour * 10) / 10,
+      activeHours: Math.round(clampedHours * 10) / 10,
+      totalForms: staffTotal,
+    })
+  }
+  productivityScores.sort((a, b) => b.score - a.score)
+
+  // Smart Alerts
+  const alerts: { type: 'warning' | 'danger' | 'info'; message: string }[] = []
+  // Late logins (checked in after 7:30 AM for day, after 7:30 PM for night)
+  const lateStaff = todayAttendance.filter(a => {
+    if (!a.checkIn) return false
+    const checkInDate = new Date(a.checkIn)
+    const parts = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(checkInDate)
+    const hr = parseInt(parts.find(p => p.type === 'hour')!.value)
+    const mn = parseInt(parts.find(p => p.type === 'minute')!.value)
+    const totalMin = hr * 60 + mn
+    const team = a.staff.profile?.team
+    if (team === 'DAY') return totalMin > 7 * 60 + 30 // after 7:30 AM
+    if (team === 'NIGHT') return totalMin > 19 * 60 + 30 // after 7:30 PM
+    return false
+  })
+  if (lateStaff.length > 0) alerts.push({ type: 'warning', message: `${lateStaff.length} staff logged in late today` })
+  // Idle staff alerts
+  if (idleStaff.length > 0) alerts.push({ type: 'warning', message: `${idleStaff.length} staff idle for 10+ minutes` })
+  // Low active staff per team
+  if (dayActive.length <= 1 && allStaff.filter(s => s.profile?.team === 'DAY').length > 1) {
+    alerts.push({ type: 'danger', message: `Only ${dayActive.length} staff active in Day Team` })
+  }
+  if (nightActive.length <= 1 && allStaff.filter(s => s.profile?.team === 'NIGHT').length > 1) {
+    alerts.push({ type: 'danger', message: `Only ${nightActive.length} staff active in Night Team` })
+  }
+  // Campaigns with no forms today
+  const activeCampaigns = await prisma.campaign.findMany({ where: { isActive: true } })
+  const campaignsWithForms = new Set(todayLogs.map(l => l.campaignId))
+  const inactiveCamps = activeCampaigns.filter(c => !campaignsWithForms.has(c.id))
+  if (inactiveCamps.length > 0) {
+    alerts.push({ type: 'warning', message: `${inactiveCamps.length} campaign${inactiveCamps.length > 1 ? 's' : ''} inactive today` })
+  }
+
+  // Forms per hour per campaign (for enhanced campaign table)
+  const campFormsPerHour: Record<string, number> = {}
+  for (const [cId, perf] of Object.entries(campPerformance)) {
+    // Calculate hours since shift start
+    const shiftStart = new Date(shiftDateStr + 'T07:00:00+05:30')
+    const hoursElapsed = Math.max((Date.now() - shiftStart.getTime()) / 3600000, 0.1)
+    campFormsPerHour[cId] = Math.round((perf.totalForms / Math.min(hoursElapsed, 12)) * 10) / 10
+  }
+
+  // Build activity timeline from attendance & worklogs
+  const activityTimeline: { id: string; time: string; staffName: string; team: string; event: string; detail?: string }[] = []
+  for (const a of todayAttendance) {
+    if (a.checkIn) {
+      const t = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(a.checkIn))
+      activityTimeline.push({ id: `ci-${a.staffId}`, time: t, staffName: a.staff.username, team: a.staff.profile?.team || 'DAY', event: 'checked in' })
+    }
+    if (a.checkOut) {
+      const t = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(a.checkOut))
+      activityTimeline.push({ id: `co-${a.staffId}`, time: t, staffName: a.staff.username, team: a.staff.profile?.team || 'DAY', event: 'checked out' })
+    }
+  }
+  // Group worklogs by staff to show form submissions
+  const staffLogSummary: Record<string, { name: string; team: string; forms: number; campaigns: string[] }> = {}
+  for (const log of todayLogs) {
+    const key = log.staffId
+    if (!staffLogSummary[key]) {
+      staffLogSummary[key] = { name: log.staff.username, team: log.staff.profile?.team || 'DAY', forms: 0, campaigns: [] }
+    }
+    staffLogSummary[key].forms += log.formsCount
+    if (!staffLogSummary[key].campaigns.includes(log.campaign.name)) {
+      staffLogSummary[key].campaigns.push(log.campaign.name)
+    }
+  }
+  for (const [sid, s] of Object.entries(staffLogSummary)) {
+    if (s.forms > 0) {
+      activityTimeline.push({
+        id: `wl-${sid}`,
+        time: new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()),
+        staffName: s.name,
+        team: s.team,
+        event: `submitted ${s.forms} forms`,
+        detail: s.campaigns.join(', '),
+      })
+    }
+  }
+  activityTimeline.sort((a, b) => b.time.localeCompare(a.time))
+
   // Yesterday's attendance (for staff dashboard)
   const yesterday = new Date(shiftDate)
   yesterday.setDate(yesterday.getDate() - 1)
@@ -191,9 +333,20 @@ export async function GET(req: NextRequest) {
     staffForms: teamFilter
       ? Object.values(formsByStaff).filter(s => s.team === teamFilter).sort((a, b) => b.total - a.total)
       : Object.values(formsByStaff).sort((a, b) => b.total - a.total),
-    campaignPerformance: teamFilter
+    campaignPerformance: (teamFilter
       ? Object.values(campPerformance).filter(c => c.team === teamFilter)
-      : Object.values(campPerformance),
+      : Object.values(campPerformance)
+    ).map(c => {
+      const cId = Object.keys(campPerformance).find(k => campPerformance[k].name === c.name) || ''
+      return { ...c, formsPerHour: campFormsPerHour[cId] || 0 }
+    }),
+
+    // Enhanced analytics (admin)
+    hourlyFormsByTeam,
+    idleStaff,
+    productivityScores,
+    alerts,
+    activityTimeline,
 
     // Staff-specific
     myYesterday,
