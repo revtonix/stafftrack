@@ -21,6 +21,9 @@ interface AttendanceEntry {
   campaigns: Record<string, number>
 }
 interface CampaignPerf { name: string; team: string; totalForms: number; staffCount: number }
+interface ActivityEvent {
+  id: string; time: string; staffName: string; team: string; event: string; detail?: string
+}
 interface DashData {
   totalStaff: number; totalPresent: number; activeNow: number
   dayShiftActive: number; nightShiftActive: number
@@ -29,6 +32,7 @@ interface DashData {
   attendance: AttendanceEntry[]
   staffForms: { name: string; team: string; total: number; campaigns: Record<string, number> }[]
   campaignPerformance: CampaignPerf[]
+  activityTimeline?: ActivityEvent[]
 }
 
 export default function AdminDashboard({ session }: { session: JWTPayload }) {
@@ -40,7 +44,7 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
   const [now, setNow] = useState(new Date())
   const [pendingLeaves, setPendingLeaves] = useState<any[]>([])
   const [refreshCount, setRefreshCount] = useState(0)
-  const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'productivity' | 'payroll'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'performance' | 'staffSalary'>('overview')
 
   // Live clock
   useEffect(() => {
@@ -102,8 +106,8 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
   const tabs = [
     { key: 'overview' as const, label: 'Overview' },
     { key: 'attendance' as const, label: 'Attendance' },
-    { key: 'productivity' as const, label: 'Productivity' },
-    { key: 'payroll' as const, label: 'Payroll' },
+    { key: 'performance' as const, label: 'Performance' },
+    { key: 'staffSalary' as const, label: 'Staff Salary' },
   ]
 
   return (
@@ -245,35 +249,66 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
         </div>
       )}
 
-      {/* Overview Tab - Campaign Performance */}
-      {activeTab === 'overview' && dashData?.campaignPerformance && dashData.campaignPerformance.length > 0 && (
-        <div className="card">
-          <div className="px-6 py-4 border-b border-slate-800/80">
-            <h2 className="font-semibold text-white">Campaign Performance Today</h2>
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Campaign</th>
-                  <th>Team</th>
-                  <th>Total Forms</th>
-                  <th>Staff Working</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dashData.campaignPerformance.map(c => (
-                  <tr key={c.name}>
-                    <td className="font-semibold text-white">{c.name}</td>
-                    <td><span className={c.team === 'DAY' ? 'badge-yellow' : 'badge-purple'}>{c.team}</span></td>
-                    <td className="font-bold text-brand-400">{c.totalForms}</td>
-                    <td className="text-slate-300">{c.staffCount}</td>
-                  </tr>
+      {/* Overview Tab - Activity Timeline + Campaign Performance */}
+      {activeTab === 'overview' && (
+        <>
+          {/* Real-time Staff Activity Timeline */}
+          {dashData?.activityTimeline && dashData.activityTimeline.length > 0 && (
+            <div className="card">
+              <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-soft" />
+                  <h2 className="font-semibold text-white">Real-time Staff Activity</h2>
+                </div>
+                <span className="text-xs text-slate-500">{dashData.activityTimeline.length} events</span>
+              </div>
+              <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
+                {dashData.activityTimeline.map((evt) => (
+                  <div key={evt.id} className="flex items-center gap-3 bg-slate-800/30 rounded-lg px-4 py-2.5 border border-slate-700/30">
+                    <div className="text-xs text-slate-500 font-mono w-16 flex-shrink-0">{evt.time}</div>
+                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${evt.team === 'DAY' ? 'bg-yellow-400' : 'bg-purple-400'}`} />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-white text-sm">{evt.staffName}</span>
+                      <span className="text-slate-400 text-sm"> {evt.event}</span>
+                      {evt.detail && <span className="text-slate-500 text-xs ml-1">({evt.detail})</span>}
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              </div>
+            </div>
+          )}
+
+          {/* Campaign Performance Today */}
+          {dashData?.campaignPerformance && dashData.campaignPerformance.length > 0 && (
+            <div className="card">
+              <div className="px-6 py-4 border-b border-slate-800/80">
+                <h2 className="font-semibold text-white">Campaign Performance Today</h2>
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Campaign</th>
+                      <th>Team</th>
+                      <th>Total Forms</th>
+                      <th>Staff Working</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashData.campaignPerformance.map(c => (
+                      <tr key={c.name}>
+                        <td className="font-semibold text-white">{c.name}</td>
+                        <td><span className={c.team === 'DAY' ? 'badge-yellow' : 'badge-purple'}>{c.team}</span></td>
+                        <td className="font-bold text-brand-400">{c.totalForms}</td>
+                        <td className="text-slate-300">{c.staffCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Attendance Tab */}
@@ -331,13 +366,36 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
         </div>
       )}
 
-      {/* Productivity Tab */}
-      {activeTab === 'productivity' && (
+      {/* Performance Tab */}
+      {activeTab === 'performance' && (
         <>
+          {/* Overall Campaign Report - ABOVE staff list */}
+          {productivity?.campTotals && Object.keys(productivity.campTotals).length > 0 && (
+            <div className="card">
+              <div className="px-6 py-4 border-b border-slate-800/80">
+                <h2 className="font-semibold text-white">Overall Campaign Report</h2>
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>Campaign</th><th>Total Forms</th></tr></thead>
+                  <tbody>
+                    {Object.entries(productivity.campTotals).sort((a, b) => b[1] - a[1]).map(([name, total]) => (
+                      <tr key={name}>
+                        <td className="font-semibold text-white">{name}</td>
+                        <td className="font-bold text-brand-400">{total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Staff Performance List */}
           {productivity && (
             <div className="card">
               <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between">
-                <h2 className="font-semibold text-white">Productivity by Staff</h2>
+                <h2 className="font-semibold text-white">Staff Performance</h2>
                 <button onClick={() => exportCsv('productivity')} className="btn-secondary btn-sm">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                   Export CSV
@@ -384,36 +442,14 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
               </div>
             </div>
           )}
-
-          {/* Campaign breakdown */}
-          {productivity?.campTotals && Object.keys(productivity.campTotals).length > 0 && (
-            <div className="card">
-              <div className="px-6 py-4 border-b border-slate-800/80">
-                <h2 className="font-semibold text-white">Campaign Breakdown</h2>
-              </div>
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Campaign</th><th>Total Forms</th></tr></thead>
-                  <tbody>
-                    {Object.entries(productivity.campTotals).sort((a, b) => b[1] - a[1]).map(([name, total]) => (
-                      <tr key={name}>
-                        <td className="font-semibold text-white">{name}</td>
-                        <td className="font-bold text-brand-400">{total}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </>
       )}
 
-      {/* Payroll Tab */}
-      {activeTab === 'payroll' && (
+      {/* Staff Salary Tab */}
+      {activeTab === 'staffSalary' && (
         <div className="card">
           <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between">
-            <h2 className="font-semibold text-white">Payroll Summary</h2>
+            <h2 className="font-semibold text-white">Staff Salary Summary</h2>
             <button onClick={() => exportCsv('payroll')} className="btn-secondary btn-sm">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
               Export CSV
@@ -432,9 +468,9 @@ export default function AdminDashboard({ session }: { session: JWTPayload }) {
                     <th>Team</th>
                     <th>Present</th>
                     <th>Extra Days</th>
-                    <th>Base Salary</th>
+                    <th>Basic</th>
                     <th>Extra Pay</th>
-                    <th>Total</th>
+                    <th>Total Salary</th>
                   </tr>
                 </thead>
                 <tbody>
