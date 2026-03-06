@@ -11,7 +11,7 @@ import bcrypt           from 'bcryptjs'
 
 export async function POST(req: Request) {
   // 1. Must be authenticated
-  const auth = await getSession(req)
+  const auth = await getSession()
   if (!auth) {
     return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 })
   }

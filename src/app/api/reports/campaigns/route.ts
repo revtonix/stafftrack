@@ -1,6 +1,6 @@
 import { NextResponse }   from 'next/server'
 import { prisma }         from '@/lib/prisma'
-import { verifyAuth }     from '@/lib/auth'
+import { getSession }     from '@/lib/auth'
 import type {
   StaffCampaignReport,
   CampaignBreakdown,
@@ -8,7 +8,7 @@ import type {
 
 // GET /api/reports/campaigns?from=ISO&to=ISO
 export async function GET(req: Request) {
-  const auth = await verifyAuth(req)
+  const auth = await getSession(req)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Only Admin and Team Lead can see full reports

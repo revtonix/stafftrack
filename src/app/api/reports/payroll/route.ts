@@ -4,11 +4,11 @@
 
 import { NextResponse }          from 'next/server'
 import { prisma }                from '@/lib/prisma'
-import { verifyAuth }            from '@/lib/auth'
+import { getSession }            from '@/lib/auth'
 import { canViewSalary }         from '@/lib/salaryGuard'
 
 export async function GET(request: Request) {
-  const auth = await verifyAuth(request)
+  const auth = await getSession(request)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)

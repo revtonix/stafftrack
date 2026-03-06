@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma }       from '@/lib/prisma'
-import { verifyAuth }   from '@/lib/auth'
+import { getSession }   from '@/lib/auth'
 
 // POST /api/campaigns
 // Body: { staffId, shiftKey, hourStart, hourEnd, campaignName, count }
 export async function POST(req: Request) {
-  const auth = await verifyAuth(req)
+  const auth = await getSession(req)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { staffId, shiftKey, hourStart, hourEnd, campaignName, count = 0 } = await req.json()
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 
 // GET /api/campaigns?staffId=X&shiftKey=2026-03-04
 export async function GET(req: Request) {
-  const auth = await verifyAuth(req)
+  const auth = await getSession(req)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
